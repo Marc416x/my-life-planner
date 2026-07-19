@@ -1,0 +1,168 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Menu, X, LogOut, Leaf, Sprout } from "lucide-react";
+import { navSections } from "@/lib/nav";
+
+// Faithful reproduction of the original prototype's sidebar + layout, using the
+// original CSS classes. Adds a proper mobile drawer (the part that was buggy)
+// via the original `.sidebar.open` mechanism + an overlay.
+export function AppShell({ children }: { children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+  const close = () => setOpen(false);
+
+  const proBadge = (
+    <span
+      style={{
+        fontSize: "0.6rem",
+        background: "var(--ochre-light)",
+        color: "#7A5A10",
+        padding: "1px 5px",
+        borderRadius: "3px",
+        marginLeft: "auto",
+        fontWeight: 600,
+      }}
+    >
+      PRO
+    </span>
+  );
+
+  return (
+    <div className="app-layout">
+      {/* Mobile hamburger — hidden on desktop */}
+      <button
+        type="button"
+        className="md:hidden"
+        onClick={() => setOpen(true)}
+        aria-label="Open menu"
+        style={{
+          position: "fixed",
+          top: "0.75rem",
+          left: "0.75rem",
+          zIndex: 97,
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: "40px",
+          height: "40px",
+          borderRadius: "10px",
+          background: "var(--bg-card)",
+          border: "1px solid var(--border-strong)",
+          color: "var(--text-primary)",
+          boxShadow: "var(--shadow)",
+        }}
+      >
+        <Menu size={22} />
+      </button>
+
+      {/* Mobile overlay */}
+      <div
+        className={"sidebar-overlay md:hidden" + (open ? " active" : "")}
+        onClick={close}
+        aria-hidden
+      />
+
+      {/* Sidebar */}
+      <aside className={"sidebar" + (open ? " open" : "")} id="main-sidebar">
+        <div
+          className="sidebar-logo"
+          style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
+        >
+          <div>
+            <h2 style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
+              <Leaf size={20} />
+              MyLifePlanner
+            </h2>
+            <p>Nursing Academic OS</p>
+          </div>
+          <button
+            type="button"
+            className="md:hidden"
+            onClick={close}
+            aria-label="Close menu"
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: "var(--text-muted)",
+              display: "inline-flex",
+            }}
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="user-card" style={{ cursor: "pointer" }} title="Edit Profile">
+          <div className="user-avatar" id="sidebar-avatar">
+            SN
+          </div>
+          <div className="user-info">
+            <div className="user-name" id="sidebar-name">
+              Student
+            </div>
+            <div
+              className="level-badge"
+              style={{ display: "inline-flex", alignItems: "center", gap: "3px" }}
+            >
+              <Sprout size={11} /> Beginner
+            </div>
+          </div>
+        </div>
+
+        <div className="streak-mini">
+          <div className="streak-mini-label">Study Streak</div>
+          <div className="streak-mini-val" id="sidebar-streak">
+            0
+          </div>
+          <div className="streak-mini-sub">days consecutive</div>
+        </div>
+
+        <nav>
+          {navSections.map((section) => (
+            <div className="nav-section" key={section.label}>
+              <div className="nav-label">{section.label}</div>
+              {section.items.map((item) => {
+                const Icon = item.icon;
+                const active =
+                  item.href === "/"
+                    ? pathname === "/"
+                    : pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={close}
+                    className={"nav-item" + (active ? " active" : "")}
+                  >
+                    <span className="nav-icon inline-flex items-center justify-center">
+                      <Icon size={16} />
+                    </span>
+                    {item.label}
+                    {item.pro && proBadge}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
+
+          <div className="nav-section">
+            <div className="nav-label">Session</div>
+            {/* Auth arrives in a later stage; log out is a placeholder for now. */}
+            <button type="button" className="nav-item" style={{ width: "100%", textAlign: "left", background: "none", border: "none", font: "inherit", cursor: "pointer" }}>
+              <span className="nav-icon inline-flex items-center justify-center">
+                <LogOut size={16} />
+              </span>
+              Switch Account / Log Out
+            </button>
+          </div>
+        </nav>
+      </aside>
+
+      {/* Main content */}
+      <main className="main-content">{children}</main>
+    </div>
+  );
+}

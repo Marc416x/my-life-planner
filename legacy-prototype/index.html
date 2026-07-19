@@ -1,0 +1,2405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>MyLifePlanner — Nursing Academic OS</title>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Nunito:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/themes.css">
+<link rel="stylesheet" href="css/responsive.css">
+</head>
+<body class="mode-light">
+
+<!-- ===== ONBOARDING ===== -->
+<!-- ===== AUTH GATE (Sign In / Sign Up) ===== -->
+<div id="auth-gate">
+  <div class="onboard-card">
+    <div class="onboard-logo">
+      <h1>🌿 MyLifePlanner</h1>
+      <p>Your Nursing Academic Operating System</p>
+    </div>
+
+    <div id="auth-signup-view">
+      <h2>Create your account</h2>
+      <p>Start your nursing academic journey</p>
+      <div class="form-row single">
+        <div class="form-group"><label>Email Address</label><input type="email" id="auth-signup-email" placeholder="your@email.com"></div>
+      </div>
+      <div class="form-row single">
+        <div class="form-group"><label>Password</label><input type="password" id="auth-signup-password" placeholder="Create a password"></div>
+      </div>
+      <div class="form-row single">
+        <div class="form-group">
+          <label>I am signing up as...</label>
+          <select id="auth-signup-accounttype" onchange="onSignupAccountTypeChange()">
+            <option value="individual">Individual Student</option>
+            <option value="institutional_student">Institutional Student — my school enrolled me</option>
+            <option value="institutional_admin">Institutional Admin / Faculty</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row single" id="auth-signup-institution-row" style="display:none;">
+        <div class="form-group"><label>Institution Name</label><input type="text" id="auth-signup-institution" placeholder="e.g., Riverside School of Nursing"></div>
+      </div>
+      <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:0.5rem;font-family:'Nunito',sans-serif;font-style:italic;" id="auth-signup-accounttype-note">You'll land on your personal planner dashboard.</div>
+      <button class="btn-primary" onclick="mockSignUp()">Create Account →</button>
+      <button class="btn-primary" style="background:#fff;color:#3c4043;border:1px solid var(--border-strong);margin-top:0.6rem;" onclick="mockGoogleAuth()">🔵 Continue with Google</button>
+      <p style="text-align:center;margin-top:1rem;font-size:0.85rem;">Already have an account? <a href="#" onclick="showAuthView('signin');return false;" style="color:var(--terracotta);">Sign in</a></p>
+    </div>
+
+    <div id="auth-signin-view" style="display:none;">
+      <h2>Welcome back, Nurse 🩺</h2>
+      <p>Sign in to your planner</p>
+      <div class="form-row single">
+        <div class="form-group"><label>Email Address</label><input type="email" id="auth-signin-email" placeholder="your@email.com"></div>
+      </div>
+      <div class="form-row single">
+        <div class="form-group"><label>Password</label><input type="password" id="auth-signin-password" placeholder="Your password"></div>
+      </div>
+      <button class="btn-primary" onclick="mockSignIn()">Sign In →</button>
+      <button class="btn-primary" style="background:#fff;color:#3c4043;border:1px solid var(--border-strong);margin-top:0.6rem;" onclick="mockGoogleAuth()">🔵 Continue with Google</button>
+      <p style="text-align:center;margin-top:1rem;font-size:0.85rem;">New here? <a href="#" onclick="showAuthView('signup');return false;" style="color:var(--terracotta);">Create an account</a></p>
+    </div>
+
+    <div style="font-size:0.7rem;color:var(--text-muted);text-align:center;margin-top:1.25rem;font-family:'Nunito',sans-serif;font-style:italic;">Demo mode — authenticates locally in your browser. In production this connects to real email/password + Google OAuth (see spec §7.1).</div>
+  </div>
+</div>
+
+<div id="onboarding" style="display:none;">
+  <div class="onboard-card">
+    <div class="onboard-logo">
+      <h1>🌿 MyLifePlanner</h1>
+      <p>Your Nursing Academic Operating System</p>
+    </div>
+
+    <div class="step-indicator">
+      <div class="step-dot active" id="dot-0"></div>
+      <div class="step-dot" id="dot-1"></div>
+      <div class="step-dot" id="dot-2"></div>
+      <div class="step-dot" id="dot-3"></div>
+    </div>
+
+    <!-- Step 1: Basic Info -->
+    <div class="onboard-step active" id="step-0">
+      <h2>Welcome, Nurse 🩺</h2>
+      <p>Let's set up your personal academic space</p>
+      <div class="form-row">
+        <div class="form-group">
+          <label>First Name</label>
+          <input type="text" id="ob-firstname" placeholder="Your first name">
+        </div>
+        <div class="form-group">
+          <label>Age</label>
+          <input type="number" id="ob-age" placeholder="Age">
+        </div>
+      </div>
+      <div class="form-row single">
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" id="ob-email" placeholder="your@email.com">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nursing Year</label>
+          <select id="ob-year">
+            <option>Year 1</option>
+            <option>Year 2</option>
+            <option>Year 3</option>
+            <option>Year 4</option>
+            <option>Postgraduate</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Study Strategy</label>
+          <select id="ob-strategy">
+            <option>Active Recall</option>
+            <option>Spaced Repetition</option>
+            <option>Mind Mapping</option>
+            <option>Practice Questions</option>
+            <option>Visual Learning</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row single">
+        <div class="form-group">
+          <label>Why do you need this planner?</label>
+          <select id="ob-reason">
+            <option>Time Management & Organization</option>
+            <option>Reduce Burnout & Stress</option>
+            <option>Improve Exam Performance</option>
+            <option>Track Clinical Progress</option>
+            <option>All of the Above</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="nextStep(1)">Continue →</button>
+    </div>
+
+    <!-- Step 2: Gender & Style -->
+    <div class="onboard-step" id="step-1">
+      <h2>Your Style Identity ✨</h2>
+      <p>Choose your aesthetic — this shapes your entire planner experience</p>
+      <div class="gender-grid">
+        <div class="gender-card" onclick="selectGender('female', this)">
+          <div class="gender-icon">🌸</div>
+          <div class="gender-label">Feminine</div>
+          <div style="font-size:0.65rem;color:var(--text-muted);margin-top:4px;">Boho Natural</div>
+        </div>
+        <div class="gender-card" onclick="selectGender('male', this)">
+          <div class="gender-icon">🏔️</div>
+          <div class="gender-label">Masculine</div>
+          <div style="font-size:0.65rem;color:var(--text-muted);margin-top:4px;">Bold Geometry</div>
+        </div>
+        <div class="gender-card" onclick="selectGender('neutral', this)">
+          <div class="gender-icon">🌿</div>
+          <div class="gender-label">Neutral</div>
+          <div style="font-size:0.65rem;color:var(--text-muted);margin-top:4px;">Balanced Earth</div>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="nextStep(2)">Continue →</button>
+      <button class="btn-back" onclick="nextStep(0)">← Back</button>
+    </div>
+
+    <!-- Step 3: Color Palette -->
+    <div class="onboard-step" id="step-2">
+      <h2>Choose Your Palette 🎨</h2>
+      <p>Pick the color set that speaks to your soul</p>
+      <div class="palette-grid">
+        <div class="palette-card" onclick="selectPalette(0, this)">
+          <div class="palette-swatches">
+            <div class="swatch" style="background:#C4704A"></div>
+            <div class="swatch" style="background:#6B7C4A"></div>
+            <div class="swatch" style="background:#C49A3A"></div>
+            <div class="swatch" style="background:#2D5A3D"></div>
+            <div class="swatch" style="background:#A0624A"></div>
+          </div>
+          <div class="palette-name">Earthy Boho — Terracotta & Olive</div>
+        </div>
+        <div class="palette-card" onclick="selectPalette(1, this)">
+          <div class="palette-swatches">
+            <div class="swatch" style="background:#E8B4C0"></div>
+            <div class="swatch" style="background:#B8A8D0"></div>
+            <div class="swatch" style="background:#8BA888"></div>
+            <div class="swatch" style="background:#94B8D0"></div>
+            <div class="swatch" style="background:#7BC4C4"></div>
+          </div>
+          <div class="palette-name">Soft Bloom — Blush & Lavender</div>
+        </div>
+        <div class="palette-card" onclick="selectPalette(2, this)">
+          <div class="palette-swatches">
+            <div class="swatch" style="background:#2D2D2D"></div>
+            <div class="swatch" style="background:#F5F5F5"></div>
+            <div class="swatch" style="background:#C49A3A"></div>
+            <div class="swatch" style="background:#B0B8C0"></div>
+            <div class="swatch" style="background:#4A2080"></div>
+          </div>
+          <div class="palette-name">High Contrast — Charcoal & Gold</div>
+        </div>
+        <div class="palette-card" onclick="selectPalette(3, this)">
+          <div class="palette-swatches">
+            <div class="swatch" style="background:#C4704A"></div>
+            <div class="swatch" style="background:#E8D5B5"></div>
+            <div class="swatch" style="background:#3A2880"></div>
+            <div class="swatch" style="background:#6888A8"></div>
+            <div class="swatch" style="background:#8B5A3A"></div>
+          </div>
+          <div class="palette-name">Desert Dusk — Terracotta & Indigo</div>
+        </div>
+        <div class="palette-card" onclick="selectPalette(4, this)">
+          <div class="palette-swatches">
+            <div class="swatch" style="background:#C85820"></div>
+            <div class="swatch" style="background:#8B2020"></div>
+            <div class="swatch" style="background:#B07040"></div>
+            <div class="swatch" style="background:#B08020"></div>
+          </div>
+          <div class="palette-name">Autumn Fire — Burnt Orange & Oxblood</div>
+        </div>
+        <div class="palette-card" onclick="selectPalette(5, this)">
+          <div class="palette-swatches">
+            <div class="swatch" style="background:#8BA888"></div>
+            <div class="swatch" style="background:#909090"></div>
+            <div class="swatch" style="background:#C0B0A0"></div>
+            <div class="swatch" style="background:#D0C8B8"></div>
+          </div>
+          <div class="palette-name">Sage Mist — Sage & Warm Grey</div>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="nextStep(3)">Continue →</button>
+      <button class="btn-back" onclick="nextStep(1)">← Back</button>
+    </div>
+
+    <!-- Step 4: Ready -->
+    <div class="onboard-step" id="step-3">
+      <h2>You're all set! 🌿</h2>
+      <p>Your nursing academic operating system is ready. Let's begin your journey.</p>
+
+      <div style="background:var(--terracotta-light);border-radius:var(--radius-sm);padding:1.25rem;margin-bottom:1.5rem;border:1px solid rgba(196,112,74,0.2);">
+        <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.05em;">Your Setup</div>
+        <div id="setup-summary" style="font-size:0.88rem;color:var(--text-secondary);line-height:1.8;"></div>
+      </div>
+
+      <div style="background:var(--olive-light);border-radius:var(--radius-sm);padding:1rem;margin-bottom:1rem;border:1px solid rgba(107,124,74,0.2);">
+        <p style="font-family:'Nunito', sans-serif;font-style:italic;color:var(--olive-dark);font-size:0.95rem;text-align:center;">"Caring for others begins with caring for yourself. This planner is your foundation."</p>
+      </div>
+
+      <button class="btn-primary" onclick="launchApp()" style="font-size:1rem;padding:1rem;letter-spacing:0.02em;">
+        🚀 Launch MyLifePlanner
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MAIN APP ===== -->
+<div id="app">
+  <!-- SIDEBAR OVERLAY -->
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+  <!-- MOBILE BOTTOM NAV -->
+  <div class="mobile-bottom-nav" style="display:none;">
+    <div onclick="showPageMobile('dashboard')" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:0.2rem;">
+      <span style="font-size:1.1rem;">🏠</span><span style="font-size:0.55rem;color:var(--text-muted);">Home</span>
+    </div>
+    <div onclick="showPageMobile('calendar')" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:0.2rem;">
+      <span style="font-size:1.1rem;">📅</span><span style="font-size:0.55rem;color:var(--text-muted);">Calendar</span>
+    </div>
+    <div onclick="showPageMobile('study')" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:0.2rem;">
+      <span style="font-size:1.1rem;">⏱️</span><span style="font-size:0.55rem;color:var(--text-muted);">Study</span>
+    </div>
+    <div onclick="showPageMobile('assignments')" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:0.2rem;">
+      <span style="font-size:1.1rem;">📋</span><span style="font-size:0.55rem;color:var(--text-muted);">Tasks</span>
+    </div>
+    <div onclick="toggleSidebar()" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:0.2rem;">
+      <span style="font-size:1.1rem;">☰</span><span style="font-size:0.55rem;color:var(--text-muted);">Menu</span>
+    </div>
+  </div>
+
+  <div class="app-layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="main-sidebar">
+      <div class="sidebar-logo">
+        <h2>🌿 MyLifePlanner</h2>
+        <p>Nursing Academic OS</p>
+      </div>
+
+      <div class="user-card" style="cursor:pointer;" onclick="openProfile()" title="Edit Profile">
+        <div class="user-avatar" id="sidebar-avatar">SN</div>
+        <div class="user-info">
+          <div class="user-name" id="sidebar-name">Student</div>
+          <div class="level-badge" id="sidebar-level">🌱 Beginner</div>
+        </div>
+        <div style="font-size:0.7rem;color:var(--text-muted);margin-left:auto;" title="Edit profile">✏️</div>
+      </div>
+
+      <div class="streak-mini nav-for-individual nav-for-institutional_student">
+        <div class="streak-mini-label">Study Streak</div>
+        <div class="streak-mini-val" id="sidebar-streak">0</div>
+        <div class="streak-mini-sub">days consecutive</div>
+      </div>
+
+      <nav>
+        <div class="nav-section nav-for-individual nav-for-institutional_student">
+          <div class="nav-label">Overview</div>
+          <div class="nav-item active" id="nav-item-dashboard" onclick="showPage('dashboard')"><span class="nav-icon">🏠</span> Dashboard</div>
+          <div class="nav-item" onclick="showPage('calendar')"><span class="nav-icon">📅</span> Calendar</div>
+        </div>
+
+        <div class="nav-section nav-for-individual nav-for-institutional_student">
+          <div class="nav-label">Academic</div>
+          <div class="nav-item" onclick="showPage('courses')"><span class="nav-icon">📚</span> Courses</div>
+          <div class="nav-item" onclick="showPage('schedule')"><span class="nav-icon">🗓️</span> Class Schedule</div>
+          <div class="nav-item" onclick="showPage('assignments')"><span class="nav-icon">📋</span> Assignments</div>
+          <div class="nav-item" onclick="showPage('exams')"><span class="nav-icon">📝</span> Exams</div>
+          <div class="nav-item" onclick="showPage('quizzes')"><span class="nav-icon">❓</span> Quizzes</div>
+          <div class="nav-item" onclick="showPage('grades')"><span class="nav-icon">🎓</span> Grades</div>
+          <div class="nav-item" onclick="showPage('clinicals')"><span class="nav-icon">🏥</span> Clinicals</div>
+        </div>
+
+        <div class="nav-section nav-for-individual nav-for-institutional_student">
+          <div class="nav-label">Study</div>
+          <div class="nav-item" onclick="showPage('study')"><span class="nav-icon">⏱️</span> Study Sessions</div>
+          <div class="nav-item" onclick="showPage('streaks')"><span class="nav-icon">🔥</span> Study Streaks</div>
+          <div class="nav-item" onclick="showPage('errorlog')"><span class="nav-icon">❌</span> Error Log</div>
+        </div>
+
+        <div class="nav-section nav-for-individual nav-for-institutional_student">
+          <div class="nav-label">Wellbeing</div>
+          <div class="nav-item" onclick="showPage('trackers')"><span class="nav-icon">📌</span> Trackers</div>
+          <div class="nav-item" onclick="showPage('progress')"><span class="nav-icon">📊</span> Progress Metrics</div>
+          <div class="nav-item" onclick="showPage('vision')"><span class="nav-icon">🌟</span> Long Term Vision</div>
+        </div>
+
+        <div class="nav-section nav-for-individual nav-for-institutional_student">
+          <div class="nav-label">Premium ✨</div>
+          <div class="nav-item" id="nav-nclex" onclick="showPage('nclex')" style="display:none;"><span class="nav-icon">🩺</span> NCLEX Tracker <span style="font-size:0.6rem;background:var(--ochre-light);color:#7A5A10;padding:1px 5px;border-radius:3px;margin-left:auto;">PRO</span></div>
+          <div class="nav-item" onclick="showPage('drugs')"><span class="nav-icon">💊</span> Drug Tracker <span style="font-size:0.6rem;background:var(--ochre-light);color:#7A5A10;padding:1px 5px;border-radius:3px;margin-left:auto;">PRO</span></div>
+          <div class="nav-item" onclick="showPage('ai-assistant')"><span class="nav-icon">🤖</span> AI Study Assistant <span style="font-size:0.6rem;background:var(--ochre-light);color:#7A5A10;padding:1px 5px;border-radius:3px;margin-left:auto;">PRO</span></div>
+        </div>
+
+        <div class="nav-section nav-for-individual nav-for-institutional_student">
+          <div class="nav-label">Community</div>
+          <div class="nav-item" onclick="showPage('groups')"><span class="nav-icon">👥</span> Study Groups <span style="font-size:0.6rem;background:var(--ochre-light);color:#7A5A10;padding:1px 5px;border-radius:3px;margin-left:auto;">PRO</span></div>
+          <div class="nav-item" onclick="showPage('resources')"><span class="nav-icon">📖</span> Resource Hub</div>
+        </div>
+
+        <!-- ===== ADMIN-ONLY NAV — completely separate from the student nav above ===== -->
+        <div class="nav-section nav-for-institutional_admin" id="nav-section-institution" style="display:none;">
+          <div class="nav-label">Administration</div>
+          <div class="nav-item" id="nav-item-institution" onclick="showPage('institution')"><span class="nav-icon">🏫</span> Institution Dashboard</div>
+          <div class="nav-item" onclick="showNotif('Coming soon — manage enrollment, invites & roster 👩‍🎓')"><span class="nav-icon">👩‍🎓</span> Manage Students</div>
+          <div class="nav-item" onclick="showNotif('Coming soon — push custom course content to your cohort 📚')"><span class="nav-icon">📚</span> Manage Courses</div>
+          <div class="nav-item" onclick="showNotif('Demo mode — opens institutional billing/invoicing in production 💳')"><span class="nav-icon">💳</span> Billing</div>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-label">Account</div>
+          <div class="nav-item" onclick="showPage('settings')"><span class="nav-icon">⚙️</span> Settings</div>
+          <div class="nav-item" onclick="logOutToLogin()"><span class="nav-icon">🚪</span> Switch Account / Log Out</div>
+        </div>
+      </nav>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+
+      <!-- DASHBOARD -->
+      <div class="page active" id="page-dashboard">
+        <div id="dashboard-institution-banner" style="display:none;background:var(--forest-light);border:1px solid var(--forest);border-radius:12px;padding:0.75rem 1rem;margin-bottom:1rem;font-size:0.82rem;color:var(--forest);align-items:center;gap:0.6rem;">
+          🏫 <span>You're enrolled through <strong id="dashboard-institution-name">Riverside School of Nursing</strong> — your Course &amp; Practice Grades are shared with your program. <a href="#" onclick="showPage('settings');return false;" style="color:var(--forest);text-decoration:underline;">Manage sharing</a></span>
+        </div>
+        <div class="greeting-banner">
+          <h2 id="dash-greeting">Good morning, Nurse! 🌅</h2>
+          <p id="dash-date">Loading date...</p>
+          <div style="display:flex;gap:1rem;margin-top:0.75rem;flex-wrap:wrap;">
+            <div style="font-size:0.8rem;color:var(--text-secondary);background:rgba(255,255,255,0.5);padding:0.3rem 0.75rem;border-radius:20px;">🔥 <span id="dash-streak">0</span> day streak</div>
+            <div style="font-size:0.8rem;color:var(--text-secondary);background:rgba(255,255,255,0.5);padding:0.3rem 0.75rem;border-radius:20px;">🎨 <span id="dash-level-name">Beginner</span></div>
+            <div style="font-size:0.8rem;color:var(--text-secondary);background:rgba(255,255,255,0.5);padding:0.3rem 0.75rem;border-radius:20px;">📅 Year <span id="dash-year">1</span></div>
+          </div>
+        </div>
+
+        <div class="affirmation-banner">
+          <span style="font-size:1.2rem;">✨</span>
+          <p id="dash-affirmation">"You are capable of extraordinary things. Every patient you'll save starts with this moment of study."</p>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Today's Study Time</div>
+            <div class="stat-val">0h 0m</div>
+            <div class="progress-bar"><div class="progress-fill fill-terracotta" style="width:0%"></div></div>
+            <div class="stat-sub">Goal: 3h today</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Tasks Completed</div>
+            <div class="stat-val">0/5</div>
+            <div class="progress-bar"><div class="progress-fill fill-olive" style="width:0%"></div></div>
+            <div class="stat-sub">0% done today</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Upcoming Exams</div>
+            <div class="stat-val">2</div>
+            <div class="stat-sub">Next: Pharmacology in 12d</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Assignment Due Soon</div>
+            <div class="stat-val">1</div>
+            <div class="stat-sub">⚠️ Case Study — 2 days</div>
+          </div>
+        </div>
+
+        <div class="dash-grid">
+          <div class="card dash-wide">
+            <div class="card-title">📋 Today's Tasks</div>
+            <ul class="today-tasks-list">
+              <li class="task-item">
+                <div class="task-check" onclick="toggleTask(this)"></div>
+                <span>Review Pharmacology Chapter 8 — Drug Interactions</span>
+                <span class="task-tag tag-study">Study</span>
+              </li>
+              <li class="task-item">
+                <div class="task-check" onclick="toggleTask(this)"></div>
+                <span>Complete Nursing Assessment Case Study</span>
+                <span class="task-tag tag-assign">Due Soon</span>
+              </li>
+              <li class="task-item">
+                <div class="task-check" onclick="toggleTask(this)"></div>
+                <span>Clinical Prep — Patient Vitals & Medication Review</span>
+                <span class="task-tag tag-clinical">Clinical</span>
+              </li>
+              <li class="task-item">
+                <div class="task-check" onclick="toggleTask(this)"></div>
+                <span>Practice NCLEX Questions — Cardiovascular</span>
+                <span class="task-tag tag-study">Study</span>
+              </li>
+              <li class="task-item">
+                <div class="task-check" onclick="toggleTask(this)"></div>
+                <span>Pharmacology Mid-Term Exam</span>
+                <span class="task-tag tag-exam">Exam</span>
+              </li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <div class="card-title">🎨 Discipline Level</div>
+            <div class="level-display">
+              <div class="level-circle" id="level-circle" style="background:var(--terracotta);">1</div>
+              <div style="font-family:'Caveat', cursive;font-size:1rem;color:var(--text-primary);font-weight:600;" id="level-name-display">Beginner</div>
+              <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.25rem;">Keep your streak to level up!</div>
+              <div class="progress-bar" style="margin-top:0.75rem;"><div class="progress-fill fill-terracotta" style="width:15%"></div></div>
+              <div style="font-size:0.7rem;color:var(--text-muted);margin-top:0.25rem;">Next: Rising (3 days)</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dash-grid">
+          <div class="card">
+            <div class="card-title">📅 Upcoming Assignments</div>
+            <div class="data-item">
+              <span>🔴</span>
+              <div style="flex:1">
+                <div style="font-size:0.85rem;font-weight:500;">Nursing Case Study</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);">Fundamentals of Nursing</div>
+              </div>
+              <span class="priority-high">2 days</span>
+            </div>
+            <div class="data-item">
+              <span>🟡</span>
+              <div style="flex:1">
+                <div style="font-size:0.85rem;font-weight:500;">Pharmacology Drug Chart</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);">Pharmacology</div>
+              </div>
+              <span class="priority-med">5 days</span>
+            </div>
+            <div class="data-item">
+              <span>🟢</span>
+              <div style="flex:1">
+                <div style="font-size:0.85rem;font-weight:500;">Lab Report — Blood Analysis</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);">Clinical Lab Sciences</div>
+              </div>
+              <span class="priority-low">12 days</span>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">🏥 Active Goals</div>
+            <div class="data-item">
+              <span>🎯</span>
+              <div style="flex:1">
+                <div style="font-size:0.85rem;font-weight:500;">Pass Pharmacology Mid-Term</div>
+                <div class="progress-bar" style="margin-top:4px;"><div class="progress-fill fill-terracotta" style="width:60%"></div></div>
+              </div>
+              <span style="font-size:0.75rem;color:var(--text-muted);">60%</span>
+            </div>
+            <div class="data-item">
+              <span>🎯</span>
+              <div style="flex:1">
+                <div style="font-size:0.85rem;font-weight:500;">Complete 30-Day Study Streak</div>
+                <div class="progress-bar" style="margin-top:4px;"><div class="progress-fill fill-olive" style="width:0%"></div></div>
+              </div>
+              <span style="font-size:0.75rem;color:var(--text-muted);">0%</span>
+            </div>
+            <div class="data-item">
+              <span>🎯</span>
+              <div style="flex:1">
+                <div style="font-size:0.85rem;font-weight:500;">Maintain GPA above 3.5</div>
+                <div class="progress-bar" style="margin-top:4px;"><div class="progress-fill fill-ochre" style="width:75%"></div></div>
+              </div>
+              <span style="font-size:0.75rem;color:var(--text-muted);">3.7</span>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">📊 Week Progress</div>
+            <div class="chart-container">
+              <div class="chart-bar-wrap">
+                <div class="chart-bar-inner fill-terracotta" style="height:70px"></div>
+                <div class="chart-bar-label">Mon</div>
+              </div>
+              <div class="chart-bar-wrap">
+                <div class="chart-bar-inner fill-terracotta" style="height:90px"></div>
+                <div class="chart-bar-label">Tue</div>
+              </div>
+              <div class="chart-bar-wrap">
+                <div class="chart-bar-inner fill-terracotta" style="height:50px"></div>
+                <div class="chart-bar-label">Wed</div>
+              </div>
+              <div class="chart-bar-wrap">
+                <div class="chart-bar-inner fill-ochre" style="height:20px;opacity:0.4"></div>
+                <div class="chart-bar-label">Thu</div>
+              </div>
+              <div class="chart-bar-wrap">
+                <div class="chart-bar-inner fill-olive" style="height:4px;opacity:0.3"></div>
+                <div class="chart-bar-label">Fri</div>
+              </div>
+              <div class="chart-bar-wrap">
+                <div class="chart-bar-inner fill-olive" style="height:4px;opacity:0.3"></div>
+                <div class="chart-bar-label">Sat</div>
+              </div>
+              <div class="chart-bar-wrap">
+                <div class="chart-bar-inner fill-olive" style="height:4px;opacity:0.3"></div>
+                <div class="chart-bar-label">Sun</div>
+              </div>
+            </div>
+            <div style="font-size:0.72rem;color:var(--text-muted);margin-top:0.5rem;text-align:center;">Study hours this week (Mon–Sun)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CALENDAR -->
+      <div class="page" id="page-calendar">
+        <div class="page-header">
+          <h1>Calendar</h1>
+          <p>Your academic timeline at a glance</p>
+        </div>
+
+        <div class="tab-bar">
+          <button class="tab-btn active" onclick="switchCalTab('yearly', this)">Yearly</button>
+          <button class="tab-btn" onclick="switchCalTab('monthly', this)">Monthly</button>
+          <button class="tab-btn" onclick="switchCalTab('weekly', this)">Weekly</button>
+          <button class="tab-btn" onclick="switchCalTab('daily', this)">Daily</button>
+        </div>
+
+        <!-- YEARLY -->
+        <div class="tab-content active" id="cal-yearly">
+          <div class="affirmation-banner" style="margin-bottom:1.5rem;">
+            <span>✨</span>
+            <p>"I am capable of achieving extraordinary things this academic year."</p>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;">
+            <div class="card">
+              <div class="card-title">🎯 2026 Academic Objectives</div>
+              <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:0.75rem;">What do you want to achieve this year?</div>
+              <div class="data-item"><span>⭕</span><span style="flex:1;font-size:0.85rem;">Pass all nursing exams with 80%+</span><span class="review-done">Active</span></div>
+              <div class="data-item"><span>⭕</span><span style="flex:1;font-size:0.85rem;">Complete all clinical rotations</span><span class="review-pending">Pending</span></div>
+              <div class="data-item"><span>⭕</span><span style="flex:1;font-size:0.85rem;">Build 90-day study streak</span><span class="review-pending">Pending</span></div>
+              <div style="margin-top:0.75rem;display:flex;gap:0.5rem;">
+                <input class="field-input" placeholder="Add new objective..." style="flex:1;font-size:0.82rem;padding:0.4rem 0.75rem;">
+                <button class="btn-add" style="padding:0.4rem 0.75rem;font-size:0.82rem;">+</button>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-title">⚠️ Things Not to Repeat</div>
+              <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:0.75rem;">Learn from past patterns</div>
+              <div class="data-item"><span>🔴</span><span style="flex:1;font-size:0.85rem;">Procrastinating on assignments</span></div>
+              <div class="data-item"><span>🔴</span><span style="flex:1;font-size:0.85rem;">Skipping sleep before clinicals</span></div>
+              <div style="margin-top:0.75rem;display:flex;gap:0.5rem;">
+                <input class="field-input" placeholder="What to avoid..." style="flex:1;font-size:0.82rem;padding:0.4rem 0.75rem;">
+                <button class="btn-add" style="padding:0.4rem 0.75rem;font-size:0.82rem;">+</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:1.5rem;">
+            <div class="card-title">📅 2026 Overview</div>
+            <div class="year-grid" id="year-calendar"></div>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat-card"><div class="stat-label">Days in Year</div><div class="stat-val">365</div></div>
+            <div class="stat-card"><div class="stat-label">Weeks</div><div class="stat-val">52</div></div>
+            <div class="stat-card"><div class="stat-label">Months</div><div class="stat-val">12</div></div>
+            <div class="stat-card"><div class="stat-label">Semesters</div><div class="stat-val">2</div></div>
+          </div>
+        </div>
+
+        <!-- MONTHLY -->
+        <div class="tab-content" id="cal-monthly">
+          <div class="affirmation-banner" style="margin-bottom:1rem;">
+            <span>✨</span>
+            <p>"This month I focus on progress, not perfection."</p>
+          </div>
+          <div class="month-cal">
+            <div class="month-cal-header">
+              <button class="cal-nav" onclick="changeMonth(-1)">‹</button>
+              <h3 id="month-title">May 2026</h3>
+              <button class="cal-nav" onclick="changeMonth(1)">›</button>
+            </div>
+            <div class="cal-grid" id="monthly-cal-grid"></div>
+          </div>
+          <div style="margin-top:1rem;display:flex;gap:0.75rem;flex-wrap:wrap;">
+            <span style="font-size:0.72rem;display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:rgba(196,112,74,0.3);display:inline-block;"></span> Exam</span>
+            <span style="font-size:0.72rem;display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:rgba(107,124,74,0.3);display:inline-block;"></span> Assignment</span>
+            <span style="font-size:0.72rem;display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:rgba(45,90,61,0.3);display:inline-block;"></span> Clinical</span>
+            <span style="font-size:0.72rem;display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--ochre-light);display:inline-block;"></span> Study</span>
+          </div>
+
+          <!-- MONTHLY BOOKS -->
+          <div class="card" style="margin-top:1.25rem;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.85rem;">
+              <div class="card-title" style="margin-bottom:0;">📚 Books to Read This Month</div>
+              <span id="monthly-books-count" style="font-size:0.72rem;color:var(--text-muted);">0 books</span>
+            </div>
+            <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;flex-wrap:wrap;">
+              <input class="field-input" id="monthly-book-title" placeholder="Book title..." style="flex:2;min-width:120px;font-size:0.82rem;padding:0.4rem 0.75rem;">
+              <input class="field-input" id="monthly-book-author" placeholder="Author (optional)" style="flex:1.5;min-width:100px;font-size:0.82rem;padding:0.4rem 0.75rem;">
+              <select class="field-select" id="monthly-book-status" style="font-size:0.8rem;padding:0.4rem;">
+                <option value="to-read">📖 To Read</option>
+                <option value="reading">📑 Reading</option>
+                <option value="done">✅ Done</option>
+              </select>
+              <button class="btn-add" onclick="addMonthlyBook()" style="padding:0.4rem 0.75rem;font-size:0.82rem;">+ Add</button>
+            </div>
+            <div id="monthly-books-list" style="display:flex;flex-direction:column;gap:0.4rem;max-height:200px;overflow-y:auto;"></div>
+            <div id="monthly-books-empty" style="font-size:0.82rem;color:var(--text-muted);text-align:center;padding:0.75rem;font-family:'Nunito', sans-serif;font-style:italic;">No books added for this month yet</div>
+          </div>
+        </div>
+
+        <!-- WEEKLY -->
+        <div class="tab-content" id="cal-weekly">
+          <div class="affirmation-banner" style="margin-bottom:1rem;">
+            <span>✨</span>
+            <p>"This week I focus on building momentum."</p>
+          </div>
+          <div class="card" style="margin-bottom:1rem;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+              <button class="cal-nav" onclick="changeWeek(-1)">‹</button>
+              <div style="font-family:'Caveat', cursive;font-size:1rem;" id="weekly-range-label">Loading...</div>
+              <button class="cal-nav" onclick="changeWeek(1)">›</button>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:0.5rem;">
+              <div style="text-align:center;"><div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:4px;">MON</div><div style="width:36px;height:36px;border-radius:50%;border:1.5px solid var(--border-strong);display:flex;align-items:center;justify-content:center;font-size:0.82rem;margin:auto;cursor:pointer;color:var(--text-muted);">4</div></div>
+              <div style="text-align:center;"><div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:4px;">TUE</div><div style="width:36px;height:36px;border-radius:50%;border:1.5px solid var(--border-strong);display:flex;align-items:center;justify-content:center;font-size:0.82rem;margin:auto;cursor:pointer;color:var(--text-muted);">5</div></div>
+              <div style="text-align:center;"><div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:4px;">WED</div><div style="width:36px;height:36px;border-radius:50%;border:1.5px solid var(--border-strong);display:flex;align-items:center;justify-content:center;font-size:0.82rem;margin:auto;cursor:pointer;color:var(--text-muted);">6</div></div>
+              <div style="text-align:center;"><div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:4px;">THU</div><div style="width:36px;height:36px;border-radius:50%;background:var(--terracotta);border:1.5px solid var(--terracotta);display:flex;align-items:center;justify-content:center;font-size:0.82rem;margin:auto;cursor:pointer;color:white;font-weight:600;">7</div></div>
+              <div style="text-align:center;"><div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:4px;">FRI</div><div style="width:36px;height:36px;border-radius:50%;border:1.5px solid var(--border-strong);display:flex;align-items:center;justify-content:center;font-size:0.82rem;margin:auto;cursor:pointer;color:var(--text-muted);">8</div></div>
+              <div style="text-align:center;"><div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:4px;">SAT</div><div style="width:36px;height:36px;border-radius:50%;border:1.5px solid var(--border-strong);display:flex;align-items:center;justify-content:center;font-size:0.82rem;margin:auto;cursor:pointer;color:var(--text-muted);">9</div></div>
+              <div style="text-align:center;"><div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:4px;">SUN</div><div style="width:36px;height:36px;border-radius:50%;border:1.5px solid var(--border-strong);display:flex;align-items:center;justify-content:center;font-size:0.82rem;margin:auto;cursor:pointer;color:var(--text-muted);">10</div></div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:2fr 1fr;gap:1rem;">
+            <div class="card">
+              <div class="card-title">⚡ Priority Tasks This Week</div>
+              <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;flex-wrap:wrap;">
+                <select class="field-select" style="font-size:0.8rem;padding:0.4rem;">
+                  <option>High Priority</option><option>Medium</option><option>Low</option>
+                </select>
+                <select class="field-select" style="font-size:0.8rem;padding:0.4rem;">
+                  <option>Pharmacology</option><option>Clinical</option><option>Fundamentals</option>
+                </select>
+                <input class="field-input" placeholder="Add priority task..." style="flex:1;min-width:150px;font-size:0.82rem;padding:0.4rem 0.75rem;">
+                <button class="btn-add" style="padding:0.4rem 0.75rem;font-size:0.82rem;">+</button>
+              </div>
+              <div style="font-size:0.85rem;color:var(--text-muted);text-align:center;padding:1rem;">No priority tasks for this week yet</div>
+            </div>
+            <div>
+              <div class="card" style="margin-bottom:1rem;">
+                <div class="card-title">🎯 Weekly Goals</div>
+                <div style="display:flex;gap:0.4rem;margin-bottom:0.5rem;">
+                  <input class="field-input" id="weekly-goal-inp" placeholder="Add weekly goal..." style="flex:1;font-size:0.82rem;padding:0.4rem 0.65rem;" onkeydown="if(event.key==='Enter')addWeeklyGoal()">
+                  <button class="btn-add" onclick="addWeeklyGoal()" style="padding:0.4rem 0.6rem;font-size:0.82rem;">+</button>
+                </div>
+                <ul id="weekly-goals-ul" style="list-style:none;"></ul>
+                <div id="weekly-goals-empty" style="font-size:0.82rem;color:var(--text-muted);text-align:center;padding:0.5rem;">No weekly goals yet</div>
+              </div>
+              <div class="card">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;">
+                  <div class="card-title" style="margin-bottom:0;">📝 Weekly Reflection</div>
+                  <button onclick="saveReflection()" class="btn-outline" style="padding:0.25rem 0.65rem;font-size:0.72rem;">💾 Save</button>
+                </div>
+                <textarea class="field-textarea" id="weekly-reflection-txt" placeholder="How did this week go? What did you accomplish? What could be improved?" style="width:100%;font-size:0.82rem;min-height:80px;"></textarea>
+                <div id="reflection-saved" style="font-size:0.72rem;color:var(--olive);margin-top:4px;display:none;">✅ Reflection saved!</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DAILY -->
+        <div class="tab-content" id="cal-daily">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+            <button class="cal-nav" onclick="changeDay(-1)">‹</button>
+            <div style="text-align:center;">
+              <div style="font-family:'Caveat', cursive;font-size:1.2rem;" id="daily-day-name">Thursday</div>
+              <div style="font-size:0.8rem;color:var(--text-muted);" id="daily-date-label">Loading...</div>
+            </div>
+            <button class="cal-nav" onclick="changeDay(1)">›</button>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:1rem;">
+            <div class="affirmation-banner"><span>💜</span><p>"I cultivate abundance and celebrate my progress"</p></div>
+            <div class="affirmation-banner" style="background:rgba(107,124,74,0.1);border-color:rgba(107,124,74,0.2);"><span>💚</span><p>"This week I focus on building momentum"</p></div>
+            <div class="affirmation-banner" style="background:rgba(196,154,58,0.1);border-color:rgba(196,154,58,0.2);"><span>🧡</span><p>"Today I trust in my ability to handle whatever comes my way"</p></div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+            <div class="card">
+              <div class="card-title">⚡ Priority Tasks</div>
+              <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;">
+                <select class="field-select" style="font-size:0.78rem;padding:0.35rem;"><option>High</option><option>Medium</option></select>
+                <select class="field-select" style="font-size:0.78rem;padding:0.35rem;"><option>Pharmacology</option><option>Clinical</option></select>
+                <input class="field-input" placeholder="Add task..." style="flex:1;font-size:0.78rem;padding:0.35rem 0.6rem;">
+                <button class="btn-add" style="padding:0.35rem 0.6rem;font-size:0.8rem;">+</button>
+              </div>
+              <div style="font-size:0.82rem;color:var(--text-muted);text-align:center;padding:0.75rem;">No priority tasks for today</div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">🙏 Gratitude</div>
+              <input class="field-input" placeholder="Add something you're grateful for..." style="width:100%;font-size:0.82rem;padding:0.4rem 0.75rem;margin-bottom:0.75rem;">
+              <div style="font-size:0.82rem;color:var(--text-muted);text-align:center;padding:0.75rem;">Add something you're grateful for today</div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">✅ Daily Tasks</div>
+              <div style="display:flex;gap:0.4rem;margin-bottom:0.75rem;">
+                <input class="field-input" id="daily-task-inp" placeholder="Add daily task..." style="flex:1;font-size:0.82rem;padding:0.4rem 0.75rem;" onkeydown="if(event.key==='Enter')addDailyTask()">
+                <button class="btn-add" onclick="addDailyTask()" style="padding:0.4rem 0.65rem;font-size:0.82rem;">+</button>
+              </div>
+              <ul id="daily-tasks-ul" style="list-style:none;"></ul>
+              <div id="daily-tasks-empty" style="font-size:0.82rem;color:var(--text-muted);text-align:center;padding:0.75rem;">No daily tasks added yet</div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">📔 Daily Journal</div>
+              <textarea class="field-textarea" placeholder="How was your day? What did you learn? What are you thinking about?" style="width:100%;min-height:100px;font-size:0.82rem;"></textarea>
+            </div>
+
+            <div class="card">
+              <div class="card-title">🕐 Daily Schedule</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5rem;margin-bottom:0.5rem;">
+                <input class="field-input" type="time" style="font-size:0.78rem;padding:0.35rem;">
+                <input class="field-input" placeholder="Event title" style="font-size:0.78rem;padding:0.35rem 0.6rem;">
+                <button class="btn-add" style="font-size:0.78rem;padding:0.35rem 0.6rem;">+ Add</button>
+              </div>
+              <div style="font-size:0.82rem;color:var(--text-muted);text-align:center;padding:0.75rem;">No events scheduled for today</div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">😊 Daily Mood</div>
+              <div style="display:flex;gap:0.5rem;justify-content:space-around;margin-bottom:0.5rem;">
+                <button class="mood-btn" onclick="selectMood(this,'😢')">😢<br><span style="font-size:0.6rem;">Very Bad</span></button>
+                <button class="mood-btn" onclick="selectMood(this,'😔')">😔<br><span style="font-size:0.6rem;">Bad</span></button>
+                <button class="mood-btn selected" onclick="selectMood(this,'😐')">😐<br><span style="font-size:0.6rem;">Okay</span></button>
+                <button class="mood-btn" onclick="selectMood(this,'😊')">😊<br><span style="font-size:0.6rem;">Good</span></button>
+                <button class="mood-btn" onclick="selectMood(this,'🤩')">🤩<br><span style="font-size:0.6rem;">Excellent</span></button>
+              </div>
+              <div style="text-align:center;font-size:0.78rem;color:var(--text-muted);" id="mood-display">Current mood: Okay</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- COURSES -->
+      <div class="page" id="page-courses">
+        <div class="page-header"><h1>Courses</h1><p>Manage your nursing subjects</p></div>
+        <div class="form-section">
+          <h3>Add New Course</h3>
+          <div class="input-row three">
+            <div class="field-group"><div class="field-label">Course Name</div><input class="field-input" placeholder="e.g., Pharmacology"></div>
+            <div class="field-group"><div class="field-label">Course Code</div><input class="field-input" placeholder="e.g., NUR301"></div>
+            <div class="field-group"><div class="field-label">Credits</div><input class="field-input" type="number" placeholder="3"></div>
+          </div>
+          <div class="input-row three">
+            <div class="field-group"><div class="field-label">Professor Name</div><input class="field-input" placeholder="Dr. Smith"></div>
+            <div class="field-group"><div class="field-label">Semester</div><select class="field-select"><option>Spring 2026</option><option>Fall 2026</option></select></div>
+            <div class="field-group"><div class="field-label">Difficulty</div><select class="field-select"><option>Easy</option><option>Medium</option><option>Hard</option></select></div>
+          </div>
+          <div class="input-row three">
+            <div class="field-group"><div class="field-label">Exam Dates</div><input class="field-input" type="date"></div>
+            <div class="field-group"><div class="field-label">Class Start Time</div><input class="field-input" type="time" value="09:00"></div>
+            <div class="field-group"><div class="field-label">Class End Time</div><input class="field-input" type="time" value="10:30"></div>
+          </div>
+          <div class="input-row">
+            <div class="field-group"><div class="field-label">Clinical Days</div><select class="field-select"><option>Monday/Wednesday</option><option>Tuesday/Thursday</option><option>Friday</option><option>Not Applicable</option></select></div>
+            <div class="field-group"><div class="field-label">Room / Location</div><input class="field-input" placeholder="e.g., Room 201 or Online"></div>
+          </div>
+          <button class="btn-add" onclick="showNotif('Course added successfully! 📚')">+ Add Course</button>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+          <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:1.25rem;border-top:3px solid var(--terracotta);">
+            <div style="font-weight:600;font-size:0.95rem;color:var(--terracotta);font-family:'Caveat', cursive;margin-bottom:4px;">Pharmacology</div>
+            <div style="font-size:0.72rem;color:var(--text-muted);">NUR301 · 4 credits</div>
+            <div class="wave-decoration"></div>
+            <div style="font-size:0.82rem;color:var(--text-secondary);line-height:2;">
+              <div>👩‍🏫 Professor: <strong>Dr. Martinez</strong></div>
+              <div>📅 Semester: <strong>Spring 2026</strong></div>
+              <div>💪 Difficulty: <strong style="color:var(--terracotta);">Hard</strong></div>
+              <div>📝 Current Grade: <strong style="color:var(--olive);">82%</strong></div>
+              <div>📋 Assignments: <strong>3</strong></div>
+            </div>
+          </div>
+          <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:1.25rem;border-top:3px solid var(--olive);">
+            <div style="font-weight:600;font-size:0.95rem;color:var(--olive-dark);font-family:'Caveat', cursive;margin-bottom:4px;">Fundamentals of Nursing</div>
+            <div style="font-size:0.72rem;color:var(--text-muted);">NUR201 · 3 credits</div>
+            <div class="wave-decoration"></div>
+            <div style="font-size:0.82rem;color:var(--text-secondary);line-height:2;">
+              <div>👩‍🏫 Professor: <strong>Prof. Johnson</strong></div>
+              <div>📅 Semester: <strong>Spring 2026</strong></div>
+              <div>💪 Difficulty: <strong style="color:var(--ochre);">Medium</strong></div>
+              <div>📝 Current Grade: <strong style="color:var(--olive);">91%</strong></div>
+              <div>📋 Assignments: <strong>2</strong></div>
+            </div>
+          </div>
+          <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:1.25rem;border-top:3px solid var(--forest);">
+            <div style="font-weight:600;font-size:0.95rem;color:var(--forest);font-family:'Caveat', cursive;margin-bottom:4px;">Clinical Lab Sciences</div>
+            <div style="font-size:0.72rem;color:var(--text-muted);">NUR310 · 3 credits</div>
+            <div class="wave-decoration"></div>
+            <div style="font-size:0.82rem;color:var(--text-secondary);line-height:2;">
+              <div>👩‍🏫 Professor: <strong>Dr. Williams</strong></div>
+              <div>📅 Semester: <strong>Spring 2026</strong></div>
+              <div>💪 Difficulty: <strong style="color:var(--ochre);">Medium</strong></div>
+              <div>📝 Current Grade: <strong style="color:var(--olive);">88%</strong></div>
+              <div>📋 Assignments: <strong>1</strong></div>
+            </div>
+          </div>
+          <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:1.25rem;border-top:3px solid var(--ochre);">
+            <div style="font-weight:600;font-size:0.95rem;color:#7A5A10;font-family:'Caveat', cursive;margin-bottom:4px;">Anatomy & Physiology</div>
+            <div style="font-size:0.72rem;color:var(--text-muted);">NUR101 · 4 credits</div>
+            <div class="wave-decoration"></div>
+            <div style="font-size:0.82rem;color:var(--text-secondary);line-height:2;">
+              <div>👩‍🏫 Professor: <strong>Prof. Davis</strong></div>
+              <div>📅 Semester: <strong>Spring 2026</strong></div>
+              <div>💪 Difficulty: <strong style="color:var(--olive);">Easy</strong></div>
+              <div>📝 Current Grade: <strong style="color:var(--olive);">95%</strong></div>
+              <div>📋 Assignments: <strong>1</strong></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ACADEMIC BOOKS SECTION -->
+        <div class="form-section" style="margin-top:1.5rem;">
+          <h3>📚 Academic Book Library</h3>
+          <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1rem;font-family:'Nunito', sans-serif;font-style:italic;">Add required and recommended books for your nursing courses</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:0.65rem;align-items:end;flex-wrap:wrap;margin-bottom:1rem;">
+            <div class="field-group"><div class="field-label">Book Title</div><input class="field-input" id="acad-book-title" placeholder="e.g., Nursing Pharmacology" style="font-size:0.82rem;padding:0.45rem;"></div>
+            <div class="field-group"><div class="field-label">Author</div><input class="field-input" id="acad-book-author" placeholder="Author name" style="font-size:0.82rem;padding:0.45rem;"></div>
+            <div class="field-group"><div class="field-label">Course</div>
+              <select class="field-select" id="acad-book-course" style="font-size:0.82rem;padding:0.45rem;">
+                <option>Pharmacology</option><option>Fundamentals</option><option>Clinical Lab</option><option>Anatomy</option><option>General</option>
+              </select>
+            </div>
+            <div class="field-group"><div class="field-label">Status</div>
+              <select class="field-select" id="acad-book-status" style="font-size:0.82rem;padding:0.45rem;">
+                <option value="required">📌 Required</option>
+                <option value="recommended">⭐ Recommended</option>
+                <option value="reading">📑 Currently Reading</option>
+                <option value="done">✅ Completed</option>
+              </select>
+            </div>
+            <button class="btn-add" onclick="addAcadBook()" style="padding:0.5rem 0.75rem;font-size:0.82rem;">+ Add Book</button>
+          </div>
+          <div id="acad-books-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0.75rem;"></div>
+          <div id="acad-books-empty" style="font-size:0.85rem;color:var(--text-muted);text-align:center;padding:1.5rem;font-family:'Nunito', sans-serif;font-style:italic;">No books added yet. Add your required textbooks above.</div>
+        </div>
+      </div>
+
+      <!-- STUDY SESSIONS -->
+      <div class="page" id="page-study">
+        <div class="page-header"><h1>Study Sessions</h1><p>Track focused learning time</p></div>
+
+        <div class="timer-display">
+          <div style="font-size:0.8rem;color:rgba(255,255,255,0.5);margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.1em;">Study Time Tracker</div>
+          <div class="timer-time" id="timer-display">00:00:00</div>
+          <div class="timer-method">
+            <button class="method-btn active" onclick="setMethod(45, this)">45 min</button>
+            <button class="method-btn" onclick="setMethod(60, this)">60 min</button>
+            <button class="method-btn" onclick="setMethod(90, this)">90 min</button>
+          </div>
+          <div class="timer-controls">
+            <button class="timer-btn timer-btn-start" onclick="startTimer()">▶ Start Session</button>
+            <button class="timer-btn timer-btn-pause" onclick="pauseTimer()">⏸ Pause</button>
+            <button class="timer-btn timer-btn-stop" onclick="stopTimer()">⏹ Stop</button>
+          </div>
+        </div>
+
+        <div class="stats-grid" style="margin-bottom:1.5rem;">
+          <div class="stat-card"><div class="stat-label">Today's Goal</div><div class="stat-val" id="today-study">0m</div><div class="progress-bar"><div class="progress-fill fill-terracotta" style="width:0%" id="today-study-bar"></div></div><div class="stat-sub">of 3h goal</div></div>
+          <div class="stat-card"><div class="stat-label">Weekly Goal</div><div class="stat-val">0m</div><div class="progress-bar"><div class="progress-fill fill-olive" style="width:0%"></div></div><div class="stat-sub">of 21h goal</div></div>
+          <div class="stat-card"><div class="stat-label">Monthly Goal</div><div class="stat-val">0m</div><div class="progress-bar"><div class="progress-fill fill-ochre" style="width:0%"></div></div><div class="stat-sub">of 90h goal</div></div>
+        </div>
+
+        <div class="form-section">
+          <h3>Session Details</h3>
+          <div class="input-row">
+            <div class="field-group"><div class="field-label">Subject / Topic</div><input class="field-input" placeholder="e.g., Drug Interactions"></div>
+            <div class="field-group"><div class="field-label">Session Type</div><select class="field-select"><option>Focused Learning</option><option>Active Recall</option><option>Practice Questions</option><option>Weakness Review</option></select></div>
+          </div>
+          <div class="input-row">
+            <div class="field-group"><div class="field-label">Course</div><select class="field-select"><option>Pharmacology</option><option>Fundamentals</option><option>Clinical Lab</option><option>Anatomy</option></select></div>
+            <div class="field-group"><div class="field-label">Topic Status</div><select class="field-select"><option>In Progress</option><option>Completed</option><option>Needs Review</option></select></div>
+          </div>
+          <div class="input-row">
+            <div class="field-group"><div class="field-label">Focus Quality (1–5)</div><input class="field-input" type="range" min="1" max="5" value="3" style="padding:0.5rem 0;"></div>
+            <div class="field-group"></div>
+          </div>
+          <div class="input-row single">
+            <div class="field-group"><div class="field-label">Notes</div><textarea class="field-textarea" placeholder="What did you cover in this session?"></textarea></div>
+          </div>
+          <div class="input-row single">
+            <div class="field-group"><div class="field-label">Mistakes & Things to Review</div><textarea class="field-textarea" placeholder="What was challenging? What needs more review?"></textarea></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">⏱ Recent Sessions</div>
+          <div class="empty-state"><div class="empty-icon">📚</div><div class="empty-text">No study sessions logged yet. Start your first session above!</div></div>
+        </div>
+      </div>
+
+      <!-- STUDY STREAKS -->
+      <div class="page" id="page-streaks">
+        <div class="page-header"><h1>Study Streaks</h1><p>Consistency builds excellence</p></div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;">
+          <div class="card" style="text-align:center;">
+            <div style="font-family:'Caveat', cursive;font-size:4rem;font-weight:700;color:var(--terracotta);" id="streak-count">0</div>
+            <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:0.5rem;">Current Study Streak</div>
+            <div style="font-size:0.72rem;color:var(--text-secondary);font-family:'Nunito', sans-serif;font-style:italic;">Meet your daily study goal to grow your streak</div>
+            <div style="margin-top:0.75rem;display:flex;align-items:center;justify-content:center;gap:6px;font-size:0.75rem;color:var(--text-muted);" title="Earn 1 freeze per 7-day streak, max 2 — auto-applied if you miss a day">
+              ❄️ <span id="streak-freezes-count">1</span>/2 Streak Freezes available
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">🎨 Discipline Level</div>
+            <div style="display:flex;flex-direction:column;gap:0.5rem;">
+              <div style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem;border-radius:6px;background:var(--terracotta-light);">
+                <div style="width:24px;height:24px;border-radius:50%;background:var(--terracotta);flex-shrink:0;"></div>
+                <div style="flex:1;font-size:0.82rem;font-weight:500;color:var(--terracotta-dark);">🌱 Beginner — 0 days</div>
+                <span style="font-size:0.7rem;background:var(--terracotta);color:white;padding:2px 8px;border-radius:10px;">Current</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem;border-radius:6px;">
+                <div style="width:24px;height:24px;border-radius:50%;background:#94B8D0;flex-shrink:0;"></div>
+                <div style="flex:1;font-size:0.82rem;color:var(--text-muted);">💧 Rising — 3 day streak</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem;border-radius:6px;">
+                <div style="width:24px;height:24px;border-radius:50%;background:var(--olive);flex-shrink:0;"></div>
+                <div style="flex:1;font-size:0.82rem;color:var(--text-muted);">🌿 Focused — 7 day streak + 50% tasks</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem;border-radius:6px;">
+                <div style="width:24px;height:24px;border-radius:50%;background:var(--ochre);flex-shrink:0;"></div>
+                <div style="flex:1;font-size:0.82rem;color:var(--text-muted);">⭐ Driven — 14 days + 70% tasks</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem;border-radius:6px;">
+                <div style="width:24px;height:24px;border-radius:50%;background:var(--terracotta-dark);flex-shrink:0;"></div>
+                <div style="flex:1;font-size:0.82rem;color:var(--text-muted);">🔥 Committed — 30 days + 80% tasks</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem;border-radius:6px;">
+                <div style="width:24px;height:24px;border-radius:50%;background:#8B2020;flex-shrink:0;"></div>
+                <div style="flex:1;font-size:0.82rem;color:var(--text-muted);">💎 Elite — 60 days + 90% tasks</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem;border-radius:6px;">
+                <div style="width:24px;height:24px;border-radius:50%;background:#5A2080;flex-shrink:0;"></div>
+                <div style="flex:1;font-size:0.82rem;color:var(--text-muted);">👑 Legend — 90 days + 95% tasks</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">📅 This Month's Streak Calendar</div>
+          <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:1rem;">Green = study goal met · Grey = missed · Orange = today</div>
+          <div class="streak-grid" id="streak-cal"></div>
+        </div>
+
+        <div class="card" style="margin-top:1rem;">
+          <div class="card-title">⚠️ Streak Rules</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+            <div style="background:rgba(196,112,74,0.08);border-radius:8px;padding:0.85rem;border-left:3px solid var(--terracotta);">
+              <div style="font-size:0.8rem;font-weight:600;color:var(--terracotta-dark);margin-bottom:4px;">Miss 1 Day</div>
+              <div style="font-size:0.75rem;color:var(--text-muted);">⚠️ Warning notification sent</div>
+            </div>
+            <div style="background:rgba(196,154,58,0.08);border-radius:8px;padding:0.85rem;border-left:3px solid var(--ochre);">
+              <div style="font-size:0.8rem;font-weight:600;color:#7A5A10;margin-bottom:4px;">Miss 2 Days</div>
+              <div style="font-size:0.75rem;color:var(--text-muted);">🎨 Color fades — visual warning</div>
+            </div>
+            <div style="background:rgba(160,98,74,0.08);border-radius:8px;padding:0.85rem;border-left:3px solid var(--clay);">
+              <div style="font-size:0.8rem;font-weight:600;color:var(--clay);margin-bottom:4px;">Miss 3 Days</div>
+              <div style="font-size:0.75rem;color:var(--text-muted);">⬇️ Drop one color level + lose streak</div>
+            </div>
+            <div style="background:rgba(139,43,43,0.08);border-radius:8px;padding:0.85rem;border-left:3px solid #8B2B2B;">
+              <div style="font-size:0.8rem;font-weight:600;color:#8B2B2B;margin-bottom:4px;">Miss 4+ Days</div>
+              <div style="font-size:0.75rem;color:var(--text-muted);">🔄 Streak resets to 0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- EXAMS -->
+      <div class="page" id="page-exams">
+        <div class="page-header"><h1>Exams</h1><p>Prepare strategically, perform confidently</p></div>
+        <div class="form-section">
+          <h3>Add Exam</h3>
+          <div class="input-row three">
+            <div class="field-group"><div class="field-label">Course</div><select class="field-select"><option>Pharmacology</option><option>Fundamentals</option><option>Clinical Lab</option><option>Anatomy</option></select></div>
+            <div class="field-group"><div class="field-label">Exam Name</div><input class="field-input" placeholder="e.g., Mid-Term"></div>
+            <div class="field-group"><div class="field-label">Exam Date</div><input class="field-input" type="date"></div>
+          </div>
+          <div class="input-row three">
+            <div class="field-group"><div class="field-label">Weight %</div><input class="field-input" placeholder="e.g., 30"></div>
+            <div class="field-group"><div class="field-label">Planned Sessions</div><input class="field-input" type="number" placeholder="5"></div>
+            <div class="field-group"><div class="field-label">Confidence Level</div><select class="field-select"><option>1 - Very Low</option><option>2 - Low</option><option>3 - Medium</option><option>4 - High</option><option>5 - Very High</option></select></div>
+          </div>
+          <div class="input-row single">
+            <div class="field-group"><div class="field-label">Topics to Cover</div><input class="field-input" placeholder="Enter topics separated by commas"></div>
+          </div>
+          <button class="btn-add" onclick="showNotif('Exam added! Start preparing early 📝')">+ Add Exam</button>
+        </div>
+
+        <div class="card-title" style="margin-bottom:1rem;font-family:'Caveat', cursive;font-size:1.1rem;color:var(--text-primary);">⏰ Upcoming Exams</div>
+
+        <div class="exam-card">
+          <div class="exam-countdown"><div class="countdown-num">12</div><div class="countdown-label">Days</div></div>
+          <div class="exam-info">
+            <div class="exam-name">Pharmacology Mid-Term</div>
+            <div class="exam-course">NUR301 · Weight: 30% · 3 sessions planned</div>
+            <div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px;">Topics: Drug interactions, Dosage calculations, Adverse effects</div>
+            <div class="confidence-bar">
+              <div class="conf-dot filled"></div><div class="conf-dot filled"></div><div class="conf-dot filled"></div><div class="conf-dot"></div><div class="conf-dot"></div>
+            </div>
+          </div>
+          <div style="text-align:center;"><div style="font-size:0.7rem;color:var(--text-muted);">Confidence</div><div style="font-family:'Caveat', cursive;font-size:1.2rem;color:var(--olive);">3/5</div></div>
+        </div>
+
+        <div class="exam-card">
+          <div class="exam-countdown" style="background:var(--olive-light);"><div class="countdown-num" style="color:var(--olive);">25</div><div class="countdown-label">Days</div></div>
+          <div class="exam-info">
+            <div class="exam-name">Fundamentals Final Exam</div>
+            <div class="exam-course">NUR201 · Weight: 40% · 5 sessions planned</div>
+            <div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px;">Topics: Patient assessment, Care planning, Documentation</div>
+            <div class="confidence-bar">
+              <div class="conf-dot filled"></div><div class="conf-dot filled"></div><div class="conf-dot"></div><div class="conf-dot"></div><div class="conf-dot"></div>
+            </div>
+          </div>
+          <div style="text-align:center;"><div style="font-size:0.7rem;color:var(--text-muted);">Confidence</div><div style="font-family:'Caveat', cursive;font-size:1.2rem;color:var(--ochre);">2/5</div></div>
+        </div>
+      </div>
+
+      <!-- ASSIGNMENTS -->
+      <div class="page" id="page-assignments">
+        <div class="page-header"><h1>Assignments</h1><p>Stay ahead — never miss a deadline</p></div>
+        <div style="background:rgba(196,112,74,0.08);border:1px solid rgba(196,112,74,0.2);border-radius:var(--radius-sm);padding:0.85rem 1.25rem;margin-bottom:1rem;font-size:0.82rem;color:var(--terracotta-dark);">
+          ⏰ <strong>Smart Due Dates:</strong> Planner sets your deadline 2 days before the actual due date. You'll also receive a notification 2 days before your original due date.
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-label">Total</div><div class="stat-val">3</div></div>
+          <div class="stat-card"><div class="stat-label">In Progress</div><div class="stat-val" style="color:var(--ochre);">1</div></div>
+          <div class="stat-card"><div class="stat-label">Completed</div><div class="stat-val" style="color:var(--olive);">0</div></div>
+          <div class="stat-card"><div class="stat-label">Completion Rate</div><div class="stat-val">0%</div><div class="progress-bar"><div class="progress-fill fill-olive" style="width:0%"></div></div></div>
+        </div>
+
+        <div class="form-section">
+          <h3>Add Assignment</h3>
+          <div class="input-row">
+            <div class="field-group"><div class="field-label">Course</div><select class="field-select"><option>Pharmacology</option><option>Fundamentals</option><option>Clinical Lab</option><option>Anatomy</option></select></div>
+            <div class="field-group"><div class="field-label">Title</div><input class="field-input" placeholder="Assignment title"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;">
+            <div class="field-group"><div class="field-label">Actual Due Date</div><input class="field-input" type="date"></div>
+            <div class="field-group"><div class="field-label">Due Time</div><input class="field-input" type="time" value="23:59"></div>
+            <div class="field-group"><div class="field-label">Type</div><select class="field-select"><option>Essay</option><option>Case Study</option><option>Lab Report</option><option>Presentation</option><option>Homework</option></select></div>
+            <div class="field-group"><div class="field-label">Priority</div><select class="field-select"><option>High</option><option>Medium</option><option>Low</option></select></div>
+          </div>
+          <div class="input-row single"><div class="field-group"><div class="field-label">Description</div><textarea class="field-textarea" placeholder="Assignment details..."></textarea></div></div>
+          <button class="btn-add" onclick="showNotif('Assignment added! Reminder set for 2 days before due date 📋')">+ Add Assignment</button>
+        </div>
+
+        <div style="display:flex;gap:0.5rem;margin-bottom:1rem;">
+          <button class="tab-btn active" style="flex:none;padding:0.4rem 1rem;border:1px solid var(--border);border-radius:20px;background:var(--terracotta);color:white;font-size:0.78rem;">All (3)</button>
+          <button class="tab-btn" style="flex:none;padding:0.4rem 1rem;border:1px solid var(--border);border-radius:20px;background:none;color:var(--text-muted);font-size:0.78rem;">Upcoming (2)</button>
+          <button class="tab-btn" style="flex:none;padding:0.4rem 1rem;border:1px solid var(--border);border-radius:20px;background:none;color:var(--text-muted);font-size:0.78rem;">Overdue (0)</button>
+          <button class="tab-btn" style="flex:none;padding:0.4rem 1rem;border:1px solid var(--border);border-radius:20px;background:none;color:var(--text-muted);font-size:0.78rem;">Completed (0)</button>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:0.65rem 0;border-bottom:1px solid var(--border);">
+            <div>
+              <div style="font-size:0.88rem;font-weight:500;color:var(--text-primary);">Nursing Assessment Case Study</div>
+              <div style="font-size:0.72rem;color:var(--text-muted);">Fundamentals of Nursing · Planner Due: May 7 (Actual: May 9)</div>
+            </div>
+            <div style="display:flex;gap:0.5rem;align-items:center;">
+              <span class="priority-high">High</span>
+              <span style="font-size:0.7rem;padding:2px 8px;border-radius:20px;background:var(--ochre-light);color:#7A5A10;font-weight:500;">In Progress</span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:0.65rem 0;border-bottom:1px solid var(--border);">
+            <div>
+              <div style="font-size:0.88rem;font-weight:500;color:var(--text-primary);">Pharmacology Drug Chart</div>
+              <div style="font-size:0.72rem;color:var(--text-muted);">Pharmacology · Planner Due: May 10 (Actual: May 12)</div>
+            </div>
+            <div style="display:flex;gap:0.5rem;align-items:center;">
+              <span class="priority-med">Medium</span>
+              <span style="font-size:0.7rem;padding:2px 8px;border-radius:20px;background:var(--border);color:var(--text-muted);font-weight:500;">Pending</span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:0.65rem 0;">
+            <div>
+              <div style="font-size:0.88rem;font-weight:500;color:var(--text-primary);">Lab Report — Blood Analysis</div>
+              <div style="font-size:0.72rem;color:var(--text-muted);">Clinical Lab Sciences · Planner Due: May 17 (Actual: May 19)</div>
+            </div>
+            <div style="display:flex;gap:0.5rem;align-items:center;">
+              <span class="priority-low">Low</span>
+              <span style="font-size:0.7rem;padding:2px 8px;border-radius:20px;background:var(--border);color:var(--text-muted);font-weight:500;">Pending</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GRADES -->
+      <div class="page" id="page-grades">
+        <div class="page-header"><h1>Grades</h1><p>Monitor your academic performance</p></div>
+
+        <div style="display:grid;grid-template-columns:1fr 2fr;gap:1rem;margin-bottom:1.5rem;">
+          <div class="card" style="text-align:center;">
+            <div class="gpa-val">3.7</div>
+            <div class="gpa-label">Current GPA</div>
+            <div class="wave-decoration"></div>
+            <div style="font-size:0.78rem;color:var(--text-muted);">Spring 2026 Semester</div>
+            <div style="margin-top:0.75rem;display:flex;gap:0.5rem;justify-content:center;flex-wrap:wrap;">
+              <span style="font-size:0.7rem;padding:2px 8px;border-radius:20px;background:var(--olive-light);color:var(--olive-dark);">A = 4.0</span>
+              <span style="font-size:0.7rem;padding:2px 8px;border-radius:20px;background:var(--ochre-light);color:#7A5A10;">B = 3.0</span>
+              <span style="font-size:0.7rem;padding:2px 8px;border-radius:20px;background:var(--terracotta-light);color:var(--terracotta-dark);">C = 2.0</span>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">📚 Course Grades Overview</div>
+            <div class="grade-row">
+              <div class="grade-name"><strong>Pharmacology</strong> NUR301 · 4 credits</div>
+              <div class="grade-weight">30%</div>
+              <div class="grade-score grade-B">82%</div>
+            </div>
+            <div class="grade-row">
+              <div class="grade-name"><strong>Fundamentals of Nursing</strong> NUR201 · 3 credits</div>
+              <div class="grade-weight">35%</div>
+              <div class="grade-score grade-A">91%</div>
+            </div>
+            <div class="grade-row">
+              <div class="grade-name"><strong>Clinical Lab Sciences</strong> NUR310 · 3 credits</div>
+              <div class="grade-weight">25%</div>
+              <div class="grade-score grade-B">88%</div>
+            </div>
+            <div class="grade-row">
+              <div class="grade-name"><strong>Anatomy & Physiology</strong> NUR101 · 4 credits</div>
+              <div class="grade-weight">10%</div>
+              <div class="grade-score grade-A">95%</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h3>📚 Add Course Grade Entry</h3>
+          <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.75rem;font-family:'Nunito',sans-serif;font-style:italic;">Official grades from your syllabus — these feed your GPA.</div>
+          <div class="input-row three">
+            <div class="field-group"><div class="field-label">Course</div><select class="field-select"><option>Pharmacology</option><option>Fundamentals</option><option>Clinical Lab</option><option>Anatomy</option></select></div>
+            <div class="field-group"><div class="field-label">Assessment Name</div><input class="field-input" placeholder="e.g., Quiz 1"></div>
+            <div class="field-group"><div class="field-label">Type</div><select class="field-select"><option>Quiz</option><option>Assignment</option><option>Mid-Term</option><option>Final Exam</option><option>Lab</option></select></div>
+          </div>
+          <div class="input-row three">
+            <div class="field-group"><div class="field-label">Score</div><input class="field-input" placeholder="85"></div>
+            <div class="field-group"><div class="field-label">Max Score</div><input class="field-input" placeholder="100"></div>
+            <div class="field-group"><div class="field-label">Weight %</div><input class="field-input" placeholder="10"></div>
+          </div>
+          <button class="btn-add" onclick="showNotif('Grade added successfully! 🎓')">+ Add Grade</button>
+        </div>
+
+        <!-- ===== PRACTICE GRADE / MASTERY SCORE (self-study track, separate from GPA) ===== -->
+        <div class="card" style="margin-top:1.5rem;">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.5rem;">
+            <div class="card-title" style="margin-bottom:0;">🎯 Practice Grades — Mastery Score</div>
+            <span style="font-size:0.6rem;background:var(--ochre-light);color:#7A5A10;padding:2px 8px;border-radius:10px;">Separate from GPA</span>
+          </div>
+          <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:1rem;font-family:'Nunito',sans-serif;font-style:italic;">
+            Built from your quiz &amp; assignment results in the Quizzes tab — a live read on how well you're actually retaining each topic, independent of what's on your transcript. Recent attempts count more than old ones.
+          </div>
+          <div id="mastery-score-list">
+            <div class="grade-row">
+              <div class="grade-name"><strong>Pharmacology</strong> · Drug Classes &amp; Mechanisms</div>
+              <div class="grade-weight" style="width:auto;font-size:0.68rem;">8 quizzes · updated 2d ago</div>
+              <div class="grade-score grade-B">78%</div>
+            </div>
+            <div class="grade-row">
+              <div class="grade-name"><strong>Pharmacology</strong> · Pharmacokinetics</div>
+              <div class="grade-weight" style="width:auto;font-size:0.68rem;">4 quizzes · updated 6d ago</div>
+              <div class="grade-score grade-C">64%</div>
+            </div>
+            <div class="grade-row">
+              <div class="grade-name"><strong>Fundamentals of Nursing</strong> · Patient Assessment</div>
+              <div class="grade-weight" style="width:auto;font-size:0.68rem;">6 quizzes · updated 1d ago</div>
+              <div class="grade-score grade-A">90%</div>
+            </div>
+            <div class="grade-row">
+              <div class="grade-name"><strong>Anatomy &amp; Physiology</strong> · Nervous System</div>
+              <div class="grade-weight" style="width:auto;font-size:0.68rem;">⚠️ Stale — no attempt in 14+ days</div>
+              <div class="grade-score" style="color:var(--text-muted);">58%</div>
+            </div>
+            <div class="grade-row">
+              <div class="grade-name"><strong>Clinical Lab Sciences</strong> · Dosage Calculations</div>
+              <div class="grade-weight" style="width:auto;font-size:0.68rem;">1 quiz · not enough data</div>
+              <div class="grade-score" style="color:var(--text-muted);">—</div>
+            </div>
+          </div>
+          <div style="margin-top:0.85rem;padding-top:0.75rem;border-top:1px dashed var(--border);font-size:0.72rem;color:var(--text-muted);display:flex;gap:1rem;flex-wrap:wrap;">
+            <span>🟢 Active — regularly reviewed</span>
+            <span>🟡 Stale — 14+ days since last attempt</span>
+            <span>⚪ Not enough data — fewer than 3 attempts</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ERROR LOG -->
+      <div class="page" id="page-errorlog">
+        <div class="page-header"><h1>Error Log</h1><p>Learn from every mistake — build stronger knowledge</p></div>
+
+        <div class="form-section">
+          <h3>Log a New Error</h3>
+          <div class="input-row">
+            <div class="field-group"><div class="field-label">Topic</div><input class="field-input" placeholder="e.g., Drug dosage calculation"></div>
+            <div class="field-group"><div class="field-label">Course</div><select class="field-select"><option>Pharmacology</option><option>Fundamentals</option><option>Clinical Lab</option><option>Anatomy</option></select></div>
+          </div>
+          <div class="input-row">
+            <div class="field-group"><div class="field-label">Error Type</div><select class="field-select"><option>Knowledge Gap</option><option>Misread Question</option><option>Clinical Reasoning Issue</option><option>Calculation Error</option></select></div>
+            <div class="field-group"><div class="field-label">Source</div><select class="field-select"><option>Exam</option><option>Quiz</option><option>Practice Questions</option><option>Clinical</option></select></div>
+          </div>
+          <div class="input-row single"><div class="field-group"><div class="field-label">Why I Missed It</div><textarea class="field-textarea" placeholder="Explain what went wrong..."></textarea></div></div>
+          <div class="input-row single"><div class="field-group"><div class="field-label">Fixing Strategy</div><textarea class="field-textarea" placeholder="How will you fix this knowledge gap?"></textarea></div></div>
+          <button class="btn-add" onclick="showNotif('Error logged. Review it regularly to master this topic! ✅')">+ Log Error</button>
+        </div>
+
+        <div class="card-title" style="margin-bottom:1rem;font-family:'Caveat', cursive;font-size:1.1rem;">Recent Errors</div>
+
+        <div class="error-item gap">
+          <span class="review-badge review-pending">Pending</span>
+          <div class="error-type" style="color:var(--terracotta);">Knowledge Gap</div>
+          <div class="error-topic">Pharmacokinetics — Drug Half-Life Calculations</div>
+          <div class="error-meta">Pharmacology · Quiz 2 · May 3, 2026</div>
+          <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.5rem;border-top:1px dashed var(--border);padding-top:0.5rem;">
+            <strong>Why missed:</strong> Confused first-order vs zero-order kinetics<br>
+            <strong>Strategy:</strong> Re-read Chapter 4, practice 20 calculation problems
+          </div>
+        </div>
+
+        <div class="error-item calc">
+          <span class="review-badge review-done">Reviewed</span>
+          <div class="error-type" style="color:var(--ochre);">Calculation Error</div>
+          <div class="error-topic">IV Drip Rate — mL/hr to drops/min conversion</div>
+          <div class="error-meta">Clinical Lab Sciences · Practice Questions · May 1, 2026</div>
+        </div>
+
+        <div class="error-item clinical">
+          <span class="review-badge review-mastered">Mastered</span>
+          <div class="error-type" style="color:var(--forest);">Clinical Reasoning</div>
+          <div class="error-topic">Prioritizing care for multiple patients — ABC framework</div>
+          <div class="error-meta">Fundamentals · Clinical · April 28, 2026</div>
+        </div>
+      </div>
+
+      <!-- TRACKERS -->
+      <div class="page" id="page-trackers">
+        <div class="page-header"><h1>Trackers</h1><p>Your wellbeing is your academic foundation</p></div>
+
+        <div class="tracker-grid">
+          <div class="tracker-card">
+            <div class="tracker-title">😊 Today's Mood</div>
+            <div class="mood-options">
+              <button class="mood-btn" onclick="selectMood(this,'😢')">😢 Very Bad</button>
+              <button class="mood-btn" onclick="selectMood(this,'😔')">😔 Bad</button>
+              <button class="mood-btn selected" onclick="selectMood(this,'😐')">😐 Okay</button>
+              <button class="mood-btn" onclick="selectMood(this,'😊')">😊 Good</button>
+              <button class="mood-btn" onclick="selectMood(this,'🤩')">🤩 Excellent</button>
+            </div>
+          </div>
+
+          <div class="tracker-card">
+            <div class="tracker-title">😴 Sleep Last Night</div>
+            <div class="sleep-input">
+              <button onclick="adjustSleep(-0.5)" style="background:none;border:1px solid var(--border-strong);width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:1rem;color:var(--text-muted);">−</button>
+              <div style="flex:1;text-align:center;">
+                <span class="sleep-val" id="sleep-val">7.5</span>
+                <span class="sleep-unit">hrs</span>
+              </div>
+              <button onclick="adjustSleep(0.5)" style="background:none;border:1px solid var(--border-strong);width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:1rem;color:var(--text-muted);">+</button>
+            </div>
+            <div class="progress-bar" style="margin-top:0.75rem;"><div class="progress-fill fill-forest" style="width:75%" id="sleep-bar"></div></div>
+            <div style="font-size:0.7rem;color:var(--text-muted);margin-top:4px;text-align:center;">Goal: 8–9 hrs for optimal study</div>
+          </div>
+
+          <div class="tracker-card">
+            <div class="tracker-title">💧 Water Intake</div>
+            <div style="display:flex;align-items:center;gap:0.5rem;justify-content:center;margin-bottom:0.5rem;">
+              <button onclick="adjustWater(-1)" style="background:none;border:1px solid var(--border-strong);width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:1rem;color:var(--text-muted);">−</button>
+              <div style="text-align:center;"><span class="sleep-val" id="water-val" style="font-size:1.8rem;color:#4A90B8;">6</span><span class="sleep-unit"> glasses</span></div>
+              <button onclick="adjustWater(1)" style="background:none;border:1px solid var(--border-strong);width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:1rem;color:var(--text-muted);">+</button>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" style="width:75%;background:#4A90B8;" id="water-bar"></div></div>
+            <div style="font-size:0.7rem;color:var(--text-muted);margin-top:4px;text-align:center;">Goal: 8 glasses daily</div>
+          </div>
+
+          <div class="tracker-card">
+            <div class="tracker-title">🔥 Burnout Monitor</div>
+            <div style="display:flex;flex-direction:column;gap:0.4rem;margin-top:0.5rem;">
+              <div style="display:flex;align-items:center;justify-content:space-between;font-size:0.78rem;">
+                <span>Stress Level</span>
+                <input type="range" min="1" max="10" value="4" style="width:80px;" oninput="updateBurnout(this)">
+                <span id="stress-val">4/10</span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;font-size:0.78rem;">
+                <span>Energy Level</span>
+                <input type="range" min="1" max="10" value="7" style="width:80px;">
+                <span>7/10</span>
+              </div>
+              <div style="font-size:0.72rem;color:var(--olive);margin-top:0.5rem;text-align:center;background:var(--olive-light);padding:4px;border-radius:4px;">✅ Low burnout risk today</div>
+            </div>
+          </div>
+
+          <div class="tracker-card">
+            <div class="tracker-title">🏥 Clinical Hours</div>
+            <div style="display:flex;align-items:center;gap:0.5rem;justify-content:center;margin-bottom:0.35rem;">
+              <button onclick="adjustClinical(-1)" style="background:none;border:1px solid var(--border-strong);width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:1rem;color:var(--text-muted);">−</button>
+              <div style="text-align:center;"><span style="font-family:'Caveat', cursive;font-size:2rem;font-weight:700;color:var(--forest);" id="clinical-val">24</span><span style="font-size:0.72rem;color:var(--text-muted);"> hrs</span></div>
+              <button onclick="adjustClinical(1)" style="background:none;border:1px solid var(--border-strong);width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:1rem;color:var(--text-muted);">+</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.35rem;">
+              <span style="font-size:0.7rem;color:var(--text-muted);">Goal:</span>
+              <input type="number" id="clinical-goal" value="50" min="1" style="width:50px;font-size:0.78rem;padding:2px 6px;border:1px solid var(--border-strong);border-radius:4px;background:var(--bg-main);color:var(--text-primary);" oninput="updateClinicalBar()">
+              <span style="font-size:0.7rem;color:var(--text-muted);">hrs this semester</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill fill-forest" style="width:48%" id="clinical-bar"></div></div>
+          </div>
+
+          <div class="tracker-card">
+            <div class="tracker-title">🎯 Goals Completed</div>
+            <div style="display:flex;align-items:center;gap:0.5rem;justify-content:center;margin-bottom:0.35rem;">
+              <button onclick="adjustGoals(-1)" style="background:none;border:1px solid var(--border-strong);width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:1rem;color:var(--text-muted);">−</button>
+              <div style="text-align:center;"><span style="font-family:'Caveat', cursive;font-size:1.6rem;font-weight:700;color:var(--ochre);" id="goals-done">0</span><span style="font-size:0.9rem;color:var(--text-muted);">/</span><span style="font-family:'Caveat', cursive;font-size:1.6rem;font-weight:700;color:var(--text-muted);" id="goals-total">3</span></div>
+              <button onclick="adjustGoals(1)" style="background:none;border:1px solid var(--border-strong);width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:1rem;color:var(--text-muted);">+</button>
+            </div>
+            <div style="font-size:0.7rem;color:var(--text-muted);text-align:center;margin-bottom:0.35rem;">Total goals: <input type="number" id="goals-total-input" value="3" min="1" style="width:40px;font-size:0.75rem;padding:1px 5px;border:1px solid var(--border-strong);border-radius:4px;background:var(--bg-main);color:var(--text-primary);" oninput="updateGoalsBar()"></div>
+            <div class="progress-bar"><div class="progress-fill fill-ochre" style="width:0%" id="goals-bar"></div></div>
+          </div>
+
+          <div class="tracker-card">
+            <div class="tracker-title">📝 Custom Tracker</div>
+            <div class="field-group" style="margin-bottom:0.5rem;"><div class="field-label">Tracker Name</div><input class="field-input" id="custom-tracker-name" placeholder="e.g., Exercise, Meditation" style="font-size:0.78rem;padding:0.35rem 0.65rem;"></div>
+            <div style="display:flex;align-items:center;gap:0.5rem;justify-content:center;margin-bottom:0.35rem;">
+              <button onclick="adjustCustom(-1)" style="background:none;border:1px solid var(--border-strong);width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:1rem;color:var(--text-muted);">−</button>
+              <span style="font-family:'Caveat', cursive;font-size:1.8rem;font-weight:700;color:var(--terracotta);" id="custom-val">0</span>
+              <button onclick="adjustCustom(1)" style="background:none;border:1px solid var(--border-strong);width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:1rem;color:var(--text-muted);">+</button>
+            </div>
+            <div style="font-size:0.7rem;color:var(--text-muted);text-align:center;">Goal: <input type="number" id="custom-goal" value="7" min="1" style="width:40px;font-size:0.75rem;padding:1px 5px;border:1px solid var(--border-strong);border-radius:4px;background:var(--bg-main);color:var(--text-primary);">  per week</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROGRESS METRICS -->
+      <div class="page" id="page-progress">
+        <div class="page-header"><h1>Progress Metrics</h1><p>Understand your patterns, optimize your performance</p></div>
+
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-label">Overall GPA</div><div class="stat-val grade-A">3.7</div></div>
+          <div class="stat-card"><div class="stat-label">Best Study Time</div><div class="stat-val" style="font-size:1.2rem;">9–11am</div><div class="stat-sub">Your peak focus window</div></div>
+          <div class="stat-card"><div class="stat-label">Avg Study/Day</div><div class="stat-val">2.3h</div></div>
+          <div class="stat-card"><div class="stat-label">Tasks Completion</div><div class="stat-val">0%</div><div class="progress-bar"><div class="progress-fill fill-olive" style="width:0%"></div></div></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;">
+          <div class="card">
+            <div class="card-title">📊 Study Hours This Week</div>
+            <div class="chart-container">
+              <div class="chart-bar-wrap"><div class="chart-bar-inner fill-terracotta" style="height:70px"></div><div class="chart-bar-label">Mon</div></div>
+              <div class="chart-bar-wrap"><div class="chart-bar-inner fill-terracotta" style="height:90px"></div><div class="chart-bar-label">Tue</div></div>
+              <div class="chart-bar-wrap"><div class="chart-bar-inner fill-terracotta" style="height:50px"></div><div class="chart-bar-label">Wed</div></div>
+              <div class="chart-bar-wrap"><div class="chart-bar-inner fill-ochre" style="height:20px;opacity:0.5"></div><div class="chart-bar-label">Thu</div></div>
+              <div class="chart-bar-wrap"><div class="chart-bar-inner" style="height:4px;background:var(--border-strong);opacity:0.3"></div><div class="chart-bar-label">Fri</div></div>
+              <div class="chart-bar-wrap"><div class="chart-bar-inner" style="height:4px;background:var(--border-strong);opacity:0.3"></div><div class="chart-bar-label">Sat</div></div>
+              <div class="chart-bar-wrap"><div class="chart-bar-inner" style="height:4px;background:var(--border-strong);opacity:0.3"></div><div class="chart-bar-label">Sun</div></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">🎯 Exam Performance</div>
+            <div class="chart-container">
+              <div class="chart-bar-wrap"><div class="chart-bar-inner fill-olive" style="height:95px"></div><div class="chart-bar-label">Quiz 1</div></div>
+              <div class="chart-bar-wrap"><div class="chart-bar-inner fill-ochre" style="height:82px"></div><div class="chart-bar-label">Quiz 2</div></div>
+              <div class="chart-bar-wrap"><div class="chart-bar-inner fill-olive" style="height:88px"></div><div class="chart-bar-label">Lab 1</div></div>
+              <div class="chart-bar-wrap"><div class="chart-bar-inner fill-terracotta" style="height:4px;opacity:0.3"></div><div class="chart-bar-label">MT</div></div>
+              <div class="chart-bar-wrap"><div class="chart-bar-inner fill-terracotta" style="height:4px;opacity:0.3"></div><div class="chart-bar-label">Final</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
+          <div class="card">
+            <div class="card-title">⏰ Study Time of Day</div>
+            <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.75rem;">When you study most</div>
+            <div style="display:flex;flex-direction:column;gap:0.4rem;">
+              <div style="display:flex;align-items:center;gap:0.5rem;font-size:0.78rem;">
+                <span style="width:50px;color:var(--text-muted);">6–9am</span>
+                <div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden;"><div style="width:20%;height:100%;background:var(--ochre);border-radius:4px;"></div></div>
+                <span style="width:25px;text-align:right;color:var(--text-muted);">20%</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:0.5rem;font-size:0.78rem;">
+                <span style="width:50px;color:var(--text-muted);">9–12pm</span>
+                <div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden;"><div style="width:45%;height:100%;background:var(--terracotta);border-radius:4px;"></div></div>
+                <span style="width:25px;text-align:right;font-weight:500;color:var(--terracotta);">45%</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:0.5rem;font-size:0.78rem;">
+                <span style="width:50px;color:var(--text-muted);">12–3pm</span>
+                <div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden;"><div style="width:15%;height:100%;background:var(--olive);border-radius:4px;"></div></div>
+                <span style="width:25px;text-align:right;color:var(--text-muted);">15%</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:0.5rem;font-size:0.78rem;">
+                <span style="width:50px;color:var(--text-muted);">3–6pm</span>
+                <div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden;"><div style="width:10%;height:100%;background:var(--forest);border-radius:4px;"></div></div>
+                <span style="width:25px;text-align:right;color:var(--text-muted);">10%</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:0.5rem;font-size:0.78rem;">
+                <span style="width:50px;color:var(--text-muted);">6–10pm</span>
+                <div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden;"><div style="width:10%;height:100%;background:var(--lavender);border-radius:4px;"></div></div>
+                <span style="width:25px;text-align:right;color:var(--text-muted);">10%</span>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">📈 Mood vs Performance</div>
+            <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.75rem;">Correlation analysis</div>
+            <div style="padding:1rem;background:var(--olive-light);border-radius:8px;text-align:center;">
+              <div style="font-family:'Caveat', cursive;font-size:1.3rem;color:var(--olive);">+0.72</div>
+              <div style="font-size:0.72rem;color:var(--text-muted);">Correlation coefficient</div>
+            </div>
+            <div style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.75rem;font-family:'Nunito', sans-serif;font-style:italic;">
+              💡 Your performance improves significantly on days when you report "Good" or "Excellent" mood.
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">💤 Sleep vs Grades</div>
+            <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.75rem;">Impact analysis</div>
+            <div style="padding:1rem;background:var(--forest-light);border-radius:8px;text-align:center;">
+              <div style="font-family:'Caveat', cursive;font-size:1.3rem;color:var(--forest);">7.5h avg</div>
+              <div style="font-size:0.72rem;color:var(--text-muted);">optimal for your grades</div>
+            </div>
+            <div style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.75rem;font-family:'Nunito', sans-serif;font-style:italic;">
+              💡 You score 12% higher on exams after 7.5+ hours of sleep.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CLINICALS -->
+      <div class="page" id="page-clinicals">
+        <div class="page-header"><h1>Clinicals</h1><p>Bridge the gap between theory and practice</p></div>
+
+        <div class="form-section">
+          <h3>Log Clinical Session</h3>
+          <div class="input-row three">
+            <div class="field-group"><div class="field-label">Date</div><input class="field-input" type="date"></div>
+            <div class="field-group"><div class="field-label">Time Spent (hrs)</div><input class="field-input" type="number" placeholder="4" step="0.5"></div>
+            <div class="field-group"><div class="field-label">Difficulty</div><select class="field-select"><option>Easy</option><option>Medium</option><option>Hard</option><option>Very Hard</option></select></div>
+          </div>
+          <div class="input-row">
+            <div class="field-group"><div class="field-label">Supervisor/Professor</div><input class="field-input" placeholder="Dr. Williams"></div>
+            <div class="field-group"><div class="field-label">Department/Ward</div><input class="field-input" placeholder="e.g., Medical Ward 3"></div>
+          </div>
+          <div class="input-row single"><div class="field-group"><div class="field-label">Goal for the Day</div><input class="field-input" placeholder="What do you aim to accomplish today?"></div></div>
+          <div class="input-row single"><div class="field-group"><div class="field-label">Things to Learn/Prepare Before Clinical</div><textarea class="field-textarea" placeholder="Medications, procedures, patient conditions to review..."></textarea></div></div>
+          <div class="input-row single"><div class="field-group"><div class="field-label">Reflections After Clinical</div><textarea class="field-textarea" placeholder="What did you observe? What did you learn? What will you improve?"></textarea></div></div>
+          <div class="input-row single"><div class="field-group"><div class="field-label">Key Takeaways / What to Consider</div><textarea class="field-textarea" placeholder="Important clinical notes, patient care insights..."></textarea></div></div>
+          <button class="btn-add" onclick="showNotif('Clinical session logged! Great work 🏥')">+ Log Clinical Session</button>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-label">Total Clinical Hours</div><div class="stat-val">24h</div><div class="progress-bar"><div class="progress-fill fill-forest" style="width:48%"></div></div><div class="stat-sub">Goal: 50h this semester</div></div>
+          <div class="stat-card"><div class="stat-label">Sessions Completed</div><div class="stat-val">6</div></div>
+          <div class="stat-card"><div class="stat-label">Avg Session Length</div><div class="stat-val">4h</div></div>
+          <div class="stat-card"><div class="stat-label">Avg Difficulty</div><div class="stat-val" style="color:var(--ochre);">Med</div></div>
+        </div>
+
+        <div class="clinical-card">
+          <div class="clinical-header">
+            <div><div class="clinical-name">Medical-Surgical Ward</div><div style="font-size:0.72rem;color:var(--text-muted);">Supervisor: Dr. Williams · 4 hours</div></div>
+            <div style="text-align:right;"><div style="font-size:0.78rem;color:var(--text-muted);">May 5, 2026</div><div style="font-size:0.72rem;background:var(--ochre-light);color:#7A5A10;padding:2px 8px;border-radius:10px;margin-top:2px;">Medium</div></div>
+          </div>
+          <div style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:0.5rem;">🎯 Goal: Practice wound dressing and vital sign monitoring</div>
+          <div style="font-size:0.78rem;color:var(--text-muted);">📝 Observed 3 wound dressings, administered 2 medications under supervision, documented patient vitals.</div>
+        </div>
+      </div>
+
+      <!-- QUIZZES -->
+      <div class="page" id="page-quizzes">
+        <div class="page-header"><h1>Quizzes</h1><p>Track your quiz performance across all courses</p></div>
+
+        <div class="form-section">
+          <h3>Add Quiz Result</h3>
+          <div class="input-row three">
+            <div class="field-group"><div class="field-label">Course</div><select class="field-select"><option>Pharmacology</option><option>Fundamentals</option><option>Clinical Lab</option><option>Anatomy</option></select></div>
+            <div class="field-group"><div class="field-label">Quiz Name</div><input class="field-input" placeholder="e.g., Quiz 3 — Antibiotics"></div>
+            <div class="field-group"><div class="field-label">Date Taken</div><input class="field-input" type="date"></div>
+          </div>
+          <div class="input-row three">
+            <div class="field-group"><div class="field-label">Score</div><input class="field-input" placeholder="85"></div>
+            <div class="field-group"><div class="field-label">Max Score</div><input class="field-input" placeholder="100"></div>
+            <div class="field-group"><div class="field-label">Time Taken (min)</div><input class="field-input" placeholder="30"></div>
+          </div>
+          <div class="input-row">
+            <div class="field-group"><div class="field-label">Topics Covered</div><input class="field-input" placeholder="Antibiotics, Dosage, Side effects"></div>
+            <div class="field-group"><div class="field-label">Difficulty</div><select class="field-select"><option>Easy</option><option>Medium</option><option>Hard</option></select></div>
+          </div>
+          <div class="input-row single"><div class="field-group"><div class="field-label">Notes</div><textarea class="field-textarea" placeholder="What was challenging? What went well?"></textarea></div></div>
+          <button class="btn-add" onclick="showNotif('Quiz result added! 📊')">+ Add Quiz</button>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+          <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:1.25rem;">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:0.75rem;">
+              <div><div style="font-weight:600;font-size:0.9rem;">Pharmacology — Quiz 1</div><div style="font-size:0.72rem;color:var(--text-muted);">Drug Classes & Mechanisms</div><div style="display:flex;gap:0.4rem;margin-top:4px;"><span style="font-size:0.65rem;padding:2px 6px;border-radius:10px;background:var(--ochre-light);color:#7A5A10;">Medium</span><span style="font-size:0.65rem;padding:2px 6px;border-radius:10px;background:var(--forest-light);color:var(--forest);">30 min</span></div></div>
+              <div style="font-family:'Caveat', cursive;font-size:1.5rem;font-weight:700;color:var(--olive);">91%</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.78rem;color:var(--text-muted);">
+              <div>✅ Score: 91/100</div><div>⏱ Time: 28 min</div>
+            </div>
+          </div>
+          <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:1.25rem;">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:0.75rem;">
+              <div><div style="font-weight:600;font-size:0.9rem;">Pharmacology — Quiz 2</div><div style="font-size:0.72rem;color:var(--text-muted);">Pharmacokinetics</div><div style="display:flex;gap:0.4rem;margin-top:4px;"><span style="font-size:0.65rem;padding:2px 6px;border-radius:10px;background:var(--terracotta-light);color:var(--terracotta-dark);">Hard</span><span style="font-size:0.65rem;padding:2px 6px;border-radius:10px;background:var(--forest-light);color:var(--forest);">35 min</span></div></div>
+              <div style="font-family:'Caveat', cursive;font-size:1.5rem;font-weight:700;color:var(--ochre);">76%</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.78rem;color:var(--text-muted);">
+              <div>📝 Score: 76/100</div><div>⏱ Time: 32 min</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCHEDULE -->
+      <div class="page" id="page-schedule">
+        <div class="page-header"><h1>Class Schedule</h1><p>Your weekly academic timetable</p></div>
+        <div class="form-section" style="margin-bottom:1rem;">
+          <h3>Add Schedule Block</h3>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:0.65rem;align-items:end;">
+            <div class="field-group"><div class="field-label">Day</div>
+              <select class="field-select" id="sch-day" style="font-size:0.82rem;padding:0.45rem;">
+                <option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
+              </select>
+            </div>
+            <div class="field-group"><div class="field-label">Start Time</div><input class="field-input" id="sch-start" type="time" value="09:00" style="font-size:0.82rem;padding:0.45rem;"></div>
+            <div class="field-group"><div class="field-label">End Time</div><input class="field-input" id="sch-end" type="time" value="10:30" style="font-size:0.82rem;padding:0.45rem;"></div>
+            <div class="field-group"><div class="field-label">Subject</div><input class="field-input" id="sch-subject" placeholder="e.g., NUR301 Pharmacology" style="font-size:0.82rem;padding:0.45rem;"></div>
+            <div class="field-group"><div class="field-label">Type</div>
+              <select class="field-select" id="sch-type" style="font-size:0.82rem;padding:0.45rem;">
+                <option value="sch-lecture">Lecture</option><option value="sch-clinical">Clinical</option><option value="sch-lab">Lab</option><option value="sch-study">Study</option>
+              </select>
+            </div>
+            <button class="btn-add" onclick="addScheduleBlock()" style="padding:0.5rem 0.75rem;font-size:0.82rem;white-space:nowrap;">+ Add</button>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:1rem;">
+          <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.75rem;">Your weekly class schedule · Click × to remove a block</div>
+          <div class="schedule-wrapper">
+            <table class="schedule-table">
+              <thead>
+                <tr>
+                  <th class="time-col">Time</th>
+                  <th>Sunday</th><th>Monday</th><th>Tuesday</th><th>Wednesday</th><th>Thursday</th><th>Friday</th><th>Saturday</th>
+                </tr>
+              </thead>
+              <tbody id="schedule-body"></tbody>
+            </table>
+          </div>
+        </div>
+        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;font-size:0.72rem;">
+          <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;border-radius:2px;background:rgba(196,112,74,0.3);border-left:2px solid var(--terracotta);display:inline-block;"></span>Lecture</span>
+          <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;border-radius:2px;background:rgba(45,90,61,0.3);border-left:2px solid var(--forest);display:inline-block;"></span>Clinical</span>
+          <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;border-radius:2px;background:rgba(196,154,58,0.2);border-left:2px solid var(--ochre);display:inline-block;"></span>Lab</span>
+          <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:12px;border-radius:2px;background:rgba(107,124,74,0.15);border-left:2px solid var(--olive);display:inline-block;"></span>Study Session</span>
+        </div>
+      </div>
+
+      <!-- LONG TERM VISION -->
+      <div class="page" id="page-vision">
+        <div class="page-header"><h1>Long Term Vision</h1><p>See the bigger picture — your nursing journey</p></div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;">
+          <div class="card">
+            <div class="vision-title">🌟 Career Goals</div>
+            <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;">
+              <input class="field-input" id="career-goal-input" placeholder="Add a career goal..." style="flex:1;font-size:0.85rem;">
+              <input class="field-input" id="career-year-input" placeholder="Year" style="width:70px;font-size:0.85rem;">
+              <select class="field-select" id="career-status-input" style="width:100px;font-size:0.82rem;padding:0.4rem;">
+                <option value="done">✅ Done</option>
+                <option value="active" selected>🔄 Active</option>
+                <option value="future">🔮 Future</option>
+              </select>
+              <button class="btn-add" onclick="addCareerGoal()" style="padding:0.5rem 0.75rem;font-size:0.82rem;">+</button>
+            </div>
+            <div id="career-goals-list">
+              <div class="milestone-item" data-id="cg1">
+                <div class="milestone-dot done"></div>
+                <div style="flex:1;">
+                  <div style="font-size:0.88rem;font-weight:500;" id="cg1-text">Complete nursing degree</div>
+                  <div style="font-size:0.72rem;color:var(--text-muted);" id="cg1-year">Year 4 — 2028</div>
+                </div>
+                <button onclick="editCareerGoal('cg1')" style="background:none;border:none;cursor:pointer;font-size:0.72rem;color:var(--text-muted);padding:2px 6px;">✏️</button>
+                <button onclick="deleteCareerGoal('cg1')" style="background:none;border:none;cursor:pointer;font-size:0.72rem;color:var(--terracotta);padding:2px 6px;">✕</button>
+              </div>
+              <div class="milestone-item" data-id="cg2">
+                <div class="milestone-dot"></div>
+                <div style="flex:1;">
+                  <div style="font-size:0.88rem;font-weight:500;">Pass NCLEX-RN exam</div>
+                  <div style="font-size:0.72rem;color:var(--text-muted);">2028 after graduation</div>
+                </div>
+                <button onclick="deleteCareerGoal('cg2')" style="background:none;border:none;cursor:pointer;font-size:0.72rem;color:var(--terracotta);padding:2px 6px;">✕</button>
+              </div>
+              <div class="milestone-item" data-id="cg3">
+                <div class="milestone-dot future"></div>
+                <div style="flex:1;">
+                  <div style="font-size:0.88rem;font-weight:500;">Specialize in ICU Nursing</div>
+                  <div style="font-size:0.72rem;color:var(--text-muted);">2029–2030</div>
+                </div>
+                <button onclick="deleteCareerGoal('cg3')" style="background:none;border:none;cursor:pointer;font-size:0.72rem;color:var(--terracotta);padding:2px 6px;">✕</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="vision-title">🎯 What I Want to Accomplish</div>
+            <textarea class="field-textarea" placeholder="Describe your ultimate nursing vision — where do you see yourself in 5, 10, 20 years? What kind of nurse do you want to be? What impact do you want to have?" style="width:100%;min-height:140px;font-family:'Nunito', sans-serif;font-size:1rem;"></textarea>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="vision-title">🌈 Dream Board</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;">
+            <div style="aspect-ratio:4/3;border:2px dashed var(--border-strong);border-radius:var(--radius-sm);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;color:var(--text-muted);" onmouseover="this.style.borderColor='var(--terracotta)';this.style.color='var(--terracotta)'" onmouseout="this.style.borderColor='var(--border-strong)';this.style.color='var(--text-muted)'">
+              <div style="font-size:1.5rem;margin-bottom:0.4rem;">🏥</div>
+              <div style="font-size:0.75rem;text-align:center;">ICU Nurse<br>2029</div>
+            </div>
+            <div style="aspect-ratio:4/3;border:2px dashed var(--border-strong);border-radius:var(--radius-sm);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;color:var(--text-muted);" onmouseover="this.style.borderColor='var(--terracotta)';this.style.color='var(--terracotta)'" onmouseout="this.style.borderColor='var(--border-strong)';this.style.color='var(--text-muted)'">
+              <div style="font-size:1.5rem;margin-bottom:0.4rem;">🎓</div>
+              <div style="font-size:0.75rem;text-align:center;">MSN Degree<br>2032</div>
+            </div>
+            <div style="aspect-ratio:4/3;border:2px dashed var(--border-strong);border-radius:var(--radius-sm);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;color:var(--text-muted);" onmouseover="this.style.borderColor='var(--terracotta)'" onmouseout="this.style.borderColor='var(--border-strong)'">
+              <div style="font-size:1.5rem;margin-bottom:0.4rem;">+</div>
+              <div style="font-size:0.75rem;text-align:center;">Add Dream</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STUDY GROUPS (PREMIUM, FUNCTIONAL) -->
+      <div class="page" id="page-groups">
+        <div class="page-header"><h1>Study Groups</h1><p>Collaborate, compete, and achieve together</p></div>
+        <div class="premium-gate" id="groups-gate">
+
+          <div id="groups-no-group-view">
+            <div class="form-section" style="margin-bottom:1.25rem;">
+              <h3>Create a Group</h3>
+              <div class="input-row">
+                <div class="field-group"><div class="field-label">Group Name</div><input class="field-input" id="new-group-name" placeholder="e.g., NUR301 Study Squad"></div>
+                <div class="field-group"><div class="field-label">Group Type</div>
+                  <select class="field-select" id="new-group-type" onchange="onGroupTypeChange()">
+                    <option value="peer">Peer Group (just me &amp; friends)</option>
+                    <option value="institutional">Institutional Cohort</option>
+                  </select>
+                </div>
+              </div>
+              <div class="input-row" id="new-group-streak-mode-row">
+                <div class="field-group">
+                  <div class="field-label">Streak Mode</div>
+                  <select class="field-select" id="new-group-streak-mode">
+                    <option value="threshold">Threshold — streak grows if 60%+ of members study that day</option>
+                    <option value="strict">Strict — every member must study for the streak to count</option>
+                  </select>
+                </div>
+                <div class="field-group" style="display:flex;align-items:end;"><button class="btn-add" onclick="createGroup()" style="width:100%;">+ Create Group</button></div>
+              </div>
+              <div id="institutional-group-note" style="display:none;font-size:0.75rem;color:var(--text-muted);font-family:'Nunito',sans-serif;font-style:italic;margin-top:0.5rem;">
+                🏫 Institutional Cohorts are locked to Threshold streak mode — this keeps things fair across a whole class, since one inactive student shouldn't zero out everyone's streak. Normally your school admin sets these up and enrolls you; creating one here is just for preview.
+              </div>
+            </div>
+            <div class="form-section">
+              <h3>Join a Group</h3>
+              <div class="input-row">
+                <div class="field-group"><div class="field-label">Invite Code</div><input class="field-input" id="join-group-code" placeholder="e.g., NUR-4F2A"></div>
+                <div class="field-group" style="display:flex;align-items:end;"><button class="btn-add" onclick="joinGroup()" style="width:100%;">Join Group</button></div>
+              </div>
+            </div>
+
+            <div class="card" style="margin-top:1.25rem;">
+              <div class="card-title">🏆 Other Study Groups</div>
+              <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.85rem;font-family:'Nunito',sans-serif;font-style:italic;">Peer groups are visible to everyone — a little friendly competition. Institutional cohorts stay private to their school.</div>
+              <div id="other-groups-list"></div>
+            </div>
+          </div>
+
+          <div id="groups-active-view" style="display:none;">
+            <div class="card" style="margin-bottom:1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;">
+              <div>
+                <div class="card-title" style="margin-bottom:2px;" id="active-group-name">👥 Group</div>
+                <div style="font-size:0.75rem;color:var(--text-muted);">Invite code: <strong id="active-group-code">—</strong> · <span id="active-group-member-count">1</span> members</div>
+                <div style="margin-top:6px;display:flex;gap:0.4rem;flex-wrap:wrap;">
+                  <span id="active-group-type-badge" style="font-size:0.65rem;padding:2px 8px;border-radius:10px;background:var(--forest-light);color:var(--forest);">Peer Group</span>
+                  <span id="active-group-streakmode-badge" style="font-size:0.65rem;padding:2px 8px;border-radius:10px;background:var(--ochre-light);color:#7A5A10;" title="How the group streak is calculated">Threshold Streak</span>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:1rem;">
+                <div style="text-align:center;">
+                  <div style="font-family:'Caveat',cursive;font-size:1.6rem;font-weight:700;color:var(--terracotta);" id="group-streak-val">0</div>
+                  <div style="font-size:0.68rem;color:var(--text-muted);">group streak 🔥</div>
+                </div>
+                <button class="btn-outline" style="font-size:0.72rem;padding:0.3rem 0.7rem;" onclick="leaveGroup()">Leave Group</button>
+              </div>
+            </div>
+            <div style="font-size:0.72rem;color:var(--text-muted);margin:-0.75rem 0 1.25rem 0;font-family:'Nunito',sans-serif;font-style:italic;" id="active-group-streak-explainer">
+              Threshold mode: your group's streak grows any day 60%+ of active members study — one person's off day won't reset it for everyone.
+            </div>
+
+            <div class="tab-bar">
+              <button class="tab-btn active" onclick="switchGroupTab('rankings', this)">Rankings</button>
+              <button class="tab-btn" onclick="switchGroupTab('other', this)">Other Groups</button>
+              <button class="tab-btn" onclick="switchGroupTab('quizzes', this)">Shared Quizzes</button>
+              <button class="tab-btn" onclick="switchGroupTab('discussion', this)">Discussion</button>
+            </div>
+
+            <div class="tab-content active" id="group-tab-rankings">
+              <div class="card">
+                <div class="card-title">📊 Group Rankings</div>
+                <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.85rem;font-family:'Nunito',sans-serif;font-style:italic;">Course Grade / GPA is never shown here — only Practice Grade (mastery) is opt-in visible, streaks are always visible.</div>
+                <div id="group-leaderboard-list"></div>
+              </div>
+            </div>
+
+            <div class="tab-content" id="group-tab-other">
+              <div class="card">
+                <div class="card-title">🏆 Other Study Groups</div>
+                <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.85rem;font-family:'Nunito',sans-serif;font-style:italic;">Peer groups app-wide — names, streaks, and average practice grade are visible to keep things fun and competitive. Institutional cohorts stay private to their school.</div>
+                <div id="other-groups-list-active"></div>
+              </div>
+            </div>
+
+            <div class="tab-content" id="group-tab-quizzes">
+              <div class="card">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
+                  <div class="card-title" style="margin-bottom:0;">📝 Shared Quizzes</div>
+                  <button class="btn-add" style="padding:0.3rem 0.85rem;font-size:0.78rem;" onclick="shareQuizWithGroup()">+ Share a Quiz Result</button>
+                </div>
+                <div id="group-quizzes-list"><div style="text-align:center;color:var(--text-muted);padding:1rem;font-family:'Nunito',sans-serif;font-style:italic;">No shared quizzes yet — share one of your logged quiz results above.</div></div>
+              </div>
+            </div>
+
+            <div class="tab-content" id="group-tab-discussion">
+              <div class="card">
+                <div class="card-title">💬 Discussion</div>
+                <div id="group-messages-list" style="display:flex;flex-direction:column;gap:0.5rem;max-height:260px;overflow-y:auto;margin-bottom:0.75rem;"></div>
+                <div style="display:flex;gap:0.5rem;">
+                  <input class="field-input" id="group-message-input" placeholder="Message your group..." style="flex:1;" onkeydown="if(event.key==='Enter')sendGroupMessage()">
+                  <button class="btn-add" onclick="sendGroupMessage()">Send</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="premium-lock-overlay" id="groups-lock" onclick="openPremiumModal()">
+            <div class="lock-icon">🔒</div>
+            <div class="lock-label">Premium Feature</div>
+            <div class="lock-sub">Study Groups is part of the paid plan</div>
+            <button class="lock-btn" onclick="event.stopPropagation();openPremiumModal()">Upgrade to Premium →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== INSTITUTION DASHBOARD (admin/faculty view — gated by account type) ===== -->
+      <div class="page" id="page-institution">
+        <div class="page-header"><h1>🏫 Institution Dashboard</h1><p>Cohort oversight — Course Grades, Practice Grades &amp; group activity</p></div>
+
+        <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:1.25rem;font-family:'Nunito',sans-serif;font-style:italic;">
+          Only students who've consented to share their academic data with your program appear here with full detail. This view is private to your institution — it's never shown to other schools or to peer groups.
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem;margin-bottom:1.5rem;">
+          <div class="stat-card"><div class="stat-label">Enrolled Students</div><div class="stat-val">42</div><div class="stat-sub">consented</div></div>
+          <div class="stat-card"><div class="stat-label">Avg Course Grade</div><div class="stat-val">84%</div><div class="stat-sub">cohort-wide</div></div>
+          <div class="stat-card"><div class="stat-label">Avg Mastery Score</div><div class="stat-val">76%</div><div class="stat-sub">practice grade</div></div>
+          <div class="stat-card"><div class="stat-label">⚠️ Flagged Students</div><div class="stat-val" style="color:var(--terracotta);">5</div><div class="stat-sub">early-warning</div></div>
+        </div>
+
+        <div class="card" style="margin-bottom:1.25rem;">
+          <div class="card-title">🔥 Topic Heatmap — Where the Cohort Is Struggling</div>
+          <div style="display:flex;flex-direction:column;gap:0.5rem;">
+            <div class="nclex-category-bar"><span style="font-size:0.78rem;color:var(--text-secondary);min-width:170px;">Pharmacokinetics</span><div class="nclex-bar-wrap"><div class="nclex-bar-fill" style="width:58%;background:var(--terracotta);"></div></div><span class="nclex-score-badge" style="background:var(--terracotta-light);color:var(--terracotta-dark);">58%</span></div>
+            <div class="nclex-category-bar"><span style="font-size:0.78rem;color:var(--text-secondary);min-width:170px;">Dosage Calculations</span><div class="nclex-bar-wrap"><div class="nclex-bar-fill" style="width:63%;background:var(--ochre);"></div></div><span class="nclex-score-badge" style="background:var(--ochre-light);color:#7A5A10;">63%</span></div>
+            <div class="nclex-category-bar"><span style="font-size:0.78rem;color:var(--text-secondary);min-width:170px;">Patient Assessment</span><div class="nclex-bar-wrap"><div class="nclex-bar-fill" style="width:88%;background:var(--olive);"></div></div><span class="nclex-score-badge" style="background:var(--olive-light);color:var(--olive-dark);">88%</span></div>
+            <div class="nclex-category-bar"><span style="font-size:0.78rem;color:var(--text-secondary);min-width:170px;">Nervous System (Anatomy)</span><div class="nclex-bar-wrap"><div class="nclex-bar-fill" style="width:71%;background:var(--forest);"></div></div><span class="nclex-score-badge" style="background:var(--forest-light);color:var(--forest);">71%</span></div>
+          </div>
+          <div style="font-size:0.72rem;color:var(--text-muted);margin-top:0.75rem;font-family:'Nunito',sans-serif;font-style:italic;">60% of the cohort is below mastery threshold on Pharmacokinetics — worth reteaching before the next exam.</div>
+        </div>
+
+        <div class="card" style="margin-bottom:1.25rem;">
+          <div class="card-title">👩‍🎓 Enrolled Students</div>
+          <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.85rem;font-family:'Nunito',sans-serif;font-style:italic;">Course Grade is official/GPA-tied. Practice Grade is the self-study mastery score. A flag means practice mastery is trending down before the course grade reflects it yet.</div>
+          <div id="institution-student-list">
+            <div class="grade-row">
+              <div class="grade-name"><strong>Amara K.</strong> · Cohort A</div>
+              <div class="grade-weight" style="width:auto;font-size:0.7rem;">Course 88% · Mastery 82%</div>
+              <div class="grade-score grade-A">✅ On track</div>
+            </div>
+            <div class="grade-row">
+              <div class="grade-name"><strong>Jordan M.</strong> · Cohort A</div>
+              <div class="grade-weight" style="width:auto;font-size:0.7rem;">Course 79% · Mastery 54%</div>
+              <div class="grade-score" style="color:var(--terracotta);">⚠️ Flagged — Pharmacokinetics</div>
+            </div>
+            <div class="grade-row">
+              <div class="grade-name"><strong>Priya S.</strong> · Cohort B</div>
+              <div class="grade-weight" style="width:auto;font-size:0.7rem;">Course 91% · Mastery 88%</div>
+              <div class="grade-score grade-A">✅ On track</div>
+            </div>
+            <div class="grade-row">
+              <div class="grade-name"><strong>Chidi O.</strong> · Cohort B</div>
+              <div class="grade-weight" style="width:auto;font-size:0.7rem;">Course 74% · Mastery 61%</div>
+              <div class="grade-score" style="color:var(--terracotta);">⚠️ Flagged — Dosage Calc</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">🔥 Peer Group Streaks Within Your Institution</div>
+          <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.85rem;font-family:'Nunito',sans-serif;font-style:italic;">Which student-formed peer groups are active — useful for spotting who's gone quiet, without exposing individual grades in this view.</div>
+          <div id="institution-group-streaks-list">
+            <div class="group-rank-row"><div class="group-rank-num">1</div><div style="flex:1;font-weight:600;">NUR201 Night Owls</div><div style="color:var(--text-muted);font-size:0.78rem;">3 members</div><div style="font-family:'Caveat',cursive;font-weight:700;color:var(--terracotta);">34🔥</div></div>
+            <div class="group-rank-row"><div class="group-rank-num">2</div><div style="flex:1;font-weight:600;">Clinical Crew</div><div style="color:var(--text-muted);font-size:0.78rem;">4 members</div><div style="font-family:'Caveat',cursive;font-weight:700;color:var(--terracotta);">9🔥</div></div>
+            <div class="group-rank-row"><div class="group-rank-num">3</div><div style="flex:1;font-weight:400;color:var(--text-muted);">Study Squad B</div><div style="color:var(--text-muted);font-size:0.78rem;">2 members</div><div style="font-family:'Caveat',cursive;font-weight:700;color:var(--text-muted);">0 — inactive 6d</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RESOURCE HUB -->
+      <div class="page" id="page-resources">
+        <div class="page-header"><h1>Resource Hub</h1><p>Your nursing knowledge library</p></div>
+
+        <div class="resource-grid" style="margin-bottom:1.5rem;">
+          <div class="resource-card">
+            <div class="resource-icon">💊</div>
+            <div class="resource-name">Drug References</div>
+            <div class="resource-desc">Medication guides, dosage calculators, drug interactions</div>
+          </div>
+          <div class="resource-card">
+            <div class="resource-icon">🩺</div>
+            <div class="resource-name">NCLEX Prep</div>
+            <div class="resource-desc">Practice questions, strategies, study guides</div>
+          </div>
+          <div class="resource-card">
+            <div class="resource-icon">🏥</div>
+            <div class="resource-name">Clinical Guides</div>
+            <div class="resource-desc">Procedures, protocols, clinical reasoning frameworks</div>
+          </div>
+          <div class="resource-card">
+            <div class="resource-icon">📐</div>
+            <div class="resource-name">Calculation Tools</div>
+            <div class="resource-desc">IV drip rates, dosage calculations, unit conversions</div>
+          </div>
+          <div class="resource-card">
+            <div class="resource-icon">🧠</div>
+            <div class="resource-name">Study Techniques</div>
+            <div class="resource-desc">Mnemonics, mind maps, active recall strategies</div>
+          </div>
+          <div class="resource-card">
+            <div class="resource-icon">📄</div>
+            <div class="resource-name">My Uploads</div>
+            <div class="resource-desc">Your personal notes, documents, and materials</div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h3>Upload Resource</h3>
+          <div class="input-row three">
+            <div class="field-group"><div class="field-label">Resource Name</div><input class="field-input" placeholder="e.g., Pharmacology Notes"></div>
+            <div class="field-group"><div class="field-label">Category</div><select class="field-select"><option>Notes</option><option>Textbook</option><option>Practice Questions</option><option>Reference Sheet</option></select></div>
+            <div class="field-group"><div class="field-label">Course</div><select class="field-select"><option>Pharmacology</option><option>Fundamentals</option><option>General</option></select></div>
+          </div>
+          <button class="btn-add" onclick="showNotif('Resource added to your hub! 📚')">+ Add Resource</button>
+        </div>
+      </div>
+
+      <!-- ===== NCLEX PERFORMANCE TRACKER (PREMIUM + OPT-IN) ===== -->
+      <div class="page" id="page-nclex">
+        <div class="page-header"><h1>NCLEX Performance Tracker</h1><p>Track your practice sessions and master every category</p></div>
+        <div class="premium-gate" id="nclex-gate">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;margin-bottom:1.5rem;">
+            <div class="stat-card"><div class="stat-label">Total Sessions</div><div class="stat-val" id="nclex-total-sessions">0</div><div class="stat-sub">practice sessions</div></div>
+            <div class="stat-card"><div class="stat-label">Avg Score</div><div class="stat-val" id="nclex-avg-score">—</div><div class="stat-sub">% correct</div></div>
+            <div class="stat-card"><div class="stat-label">Questions Done</div><div class="stat-val" id="nclex-total-q">0</div><div class="stat-sub">total attempted</div></div>
+            <div class="stat-card"><div class="stat-label">Readiness</div><div class="stat-val" id="nclex-readiness">—</div><div class="stat-sub">estimated level</div></div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.5rem;">
+            <div class="card">
+              <div class="card-title">📊 Performance by Category</div>
+              <div id="nclex-categories">
+                <div class="nclex-category-bar"><span style="font-size:0.78rem;color:var(--text-secondary);min-width:130px;">Safe Care & Environment</span><div class="nclex-bar-wrap"><div class="nclex-bar-fill" style="width:0%;background:var(--terracotta);"></div></div><span class="nclex-score-badge" style="background:var(--terracotta-light);color:var(--terracotta-dark);">—</span></div>
+                <div class="nclex-category-bar"><span style="font-size:0.78rem;color:var(--text-secondary);min-width:130px;">Health Promotion</span><div class="nclex-bar-wrap"><div class="nclex-bar-fill" style="width:0%;background:var(--olive);"></div></div><span class="nclex-score-badge" style="background:var(--olive-light);color:var(--olive-dark);">—</span></div>
+                <div class="nclex-category-bar"><span style="font-size:0.78rem;color:var(--text-secondary);min-width:130px;">Psychosocial Integrity</span><div class="nclex-bar-wrap"><div class="nclex-bar-fill" style="width:0%;background:var(--ochre);"></div></div><span class="nclex-score-badge" style="background:var(--ochre-light);color:#7A5A10;">—</span></div>
+                <div class="nclex-category-bar"><span style="font-size:0.78rem;color:var(--text-secondary);min-width:130px;">Physiological Integrity</span><div class="nclex-bar-wrap"><div class="nclex-bar-fill" style="width:0%;background:var(--forest);"></div></div><span class="nclex-score-badge" style="background:var(--forest-light);color:var(--forest);">—</span></div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">➕ Log Practice Session</div>
+              <div class="field-group" style="margin-bottom:0.65rem;"><div class="field-label">Category</div>
+                <select class="field-select" id="nclex-cat-select">
+                  <option value="safe">Safe Care & Environment</option>
+                  <option value="health">Health Promotion</option>
+                  <option value="psycho">Psychosocial Integrity</option>
+                  <option value="physio">Physiological Integrity</option>
+                </select>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.65rem;margin-bottom:0.65rem;">
+                <div class="field-group"><div class="field-label">Questions Done</div><input class="field-input" type="number" id="nclex-q-done" placeholder="e.g. 40" min="1"></div>
+                <div class="field-group"><div class="field-label">Correct</div><input class="field-input" type="number" id="nclex-q-correct" placeholder="e.g. 30" min="0"></div>
+              </div>
+              <div class="field-group" style="margin-bottom:0.65rem;"><div class="field-label">Notes (optional)</div><input class="field-input" id="nclex-notes" placeholder="e.g. Struggled with delegation questions"></div>
+              <button class="btn-add" onclick="logNclexSession()" style="width:100%;">+ Log Session</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">📋 Session History</div>
+            <div id="nclex-history-list"><div style="text-align:center;color:var(--text-muted);padding:1.5rem;font-family:'Nunito',sans-serif;font-style:italic;font-size:0.9rem;">No sessions logged yet. Start practicing! 🩺</div></div>
+          </div>
+
+          <div class="premium-lock-overlay" id="nclex-lock" onclick="openPremiumModal()">
+            <div class="lock-icon">🔒</div>
+            <div class="lock-label">Premium Feature</div>
+            <div class="lock-sub">NCLEX tracking is part of the paid plan</div>
+            <button class="lock-btn" onclick="event.stopPropagation();openPremiumModal()">Upgrade to Premium →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== PHARMACOLOGY DRUG TRACKER (PREMIUM) ===== -->
+      <div class="page" id="page-drugs">
+        <div class="page-header"><h1>💊 Drug Tracker</h1><p>2 drugs a day keeps the NCLEX failure away</p></div>
+        <div class="premium-gate" id="drugs-gate">
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;margin-bottom:1.5rem;">
+            <div class="stat-card"><div class="stat-label">Drugs Logged</div><div class="stat-val" id="drug-total">0</div><div class="stat-sub">total drugs studied</div></div>
+            <div class="stat-card"><div class="stat-label">Daily Streak</div><div class="stat-val" id="drug-streak">0</div><div class="stat-sub">days consistent</div></div>
+            <div class="stat-card"><div class="stat-label">Today's Progress</div><div class="stat-val" id="drug-today-count">0/2</div><div class="stat-sub">drugs logged today</div></div>
+            <div class="stat-card"><div class="stat-label">Classes Covered</div><div class="stat-val" id="drug-classes">0</div><div class="stat-sub">drug categories</div></div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.5rem;" id="drug-entry-section">
+            <div id="drug-slot-1">
+              <div class="drug-entry-card">
+                <div class="drug-number">Drug 1 of 2</div>
+                <div style="margin-top:0.5rem;">
+                  <div class="drug-field-label">Drug Name</div>
+                  <input class="drug-field-input" id="d1-name" placeholder="e.g. Metoprolol">
+                  <div class="drug-field-label">Drug Class</div>
+                  <input class="drug-field-input" id="d1-class" placeholder="e.g. Beta-blocker">
+                  <div class="drug-field-label">Mechanism of Action</div>
+                  <textarea class="drug-field-textarea" id="d1-moa" placeholder="How does it work at a cellular/receptor level?"></textarea>
+                  <div class="drug-field-label">Indications (What it treats)</div>
+                  <textarea class="drug-field-textarea" id="d1-indications" placeholder="e.g. Hypertension, angina, heart failure..."></textarea>
+                  <div class="drug-field-label">Side Effects</div>
+                  <textarea class="drug-field-textarea" id="d1-side" placeholder="Key adverse effects to remember..."></textarea>
+                  <div class="drug-field-label">Nursing Considerations</div>
+                  <textarea class="drug-field-textarea" id="d1-nursing" placeholder="What does the nurse monitor? Contraindications? Teaching points?"></textarea>
+                  <div class="drug-field-label">Dosage / Route</div>
+                  <input class="drug-field-input" id="d1-dose" placeholder="e.g. 25–100mg PO daily">
+                </div>
+              </div>
+            </div>
+            <div id="drug-slot-2">
+              <div class="drug-entry-card">
+                <div class="drug-number">Drug 2 of 2</div>
+                <div style="margin-top:0.5rem;">
+                  <div class="drug-field-label">Drug Name</div>
+                  <input class="drug-field-input" id="d2-name" placeholder="e.g. Furosemide">
+                  <div class="drug-field-label">Drug Class</div>
+                  <input class="drug-field-input" id="d2-class" placeholder="e.g. Loop diuretic">
+                  <div class="drug-field-label">Mechanism of Action</div>
+                  <textarea class="drug-field-textarea" id="d2-moa" placeholder="How does it work at a cellular/receptor level?"></textarea>
+                  <div class="drug-field-label">Indications (What it treats)</div>
+                  <textarea class="drug-field-textarea" id="d2-indications" placeholder="e.g. Edema, heart failure, hypertension..."></textarea>
+                  <div class="drug-field-label">Side Effects</div>
+                  <textarea class="drug-field-textarea" id="d2-side" placeholder="Key adverse effects to remember..."></textarea>
+                  <div class="drug-field-label">Nursing Considerations</div>
+                  <textarea class="drug-field-textarea" id="d2-nursing" placeholder="What does the nurse monitor? Contraindications? Teaching points?"></textarea>
+                  <div class="drug-field-label">Dosage / Route</div>
+                  <input class="drug-field-input" id="d2-dose" placeholder="e.g. 20–80mg IV/PO">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="text-align:center;margin-bottom:2rem;" id="drug-submit-area">
+            <button class="btn-primary" style="width:auto;padding:0.85rem 2.5rem;font-size:1rem;" onclick="submitDailyDrugs()">✅ Log Today's 2 Drugs</button>
+            <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.5rem;font-family:'Nunito',sans-serif;font-style:italic;">Completing both drugs earns you a streak day + tomorrow's quiz 💪</div>
+          </div>
+
+          <div id="drug-quiz-section" style="display:none;">
+            <div class="card" style="margin-bottom:1.25rem;border-left:3px solid var(--ochre);">
+              <div class="card-title">🧠 Yesterday's Drug Quiz</div>
+              <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1rem;font-family:'Nunito',sans-serif;font-style:italic;">Can you recall what you logged yesterday? Reveal each answer to check yourself.</div>
+              <div id="drug-quiz-content"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">📚 Drug Library</div>
+            <div style="display:flex;gap:0.65rem;margin-bottom:1rem;flex-wrap:wrap;" id="drug-filter-row">
+              <button class="btn-add" style="padding:0.3rem 0.85rem;font-size:0.78rem;" onclick="filterDrugs('all')">All</button>
+            </div>
+            <div id="drug-history-list"><div style="text-align:center;color:var(--text-muted);padding:1.5rem;font-family:'Nunito',sans-serif;font-style:italic;font-size:0.9rem;">No drugs logged yet. Start today! 💊</div></div>
+          </div>
+
+          <div class="premium-lock-overlay" id="drugs-lock" onclick="openPremiumModal()">
+            <div class="lock-icon">🔒</div>
+            <div class="lock-label">Premium Feature</div>
+            <div class="lock-sub">Drug Tracker is part of the paid plan</div>
+            <button class="lock-btn" onclick="event.stopPropagation();openPremiumModal()">Upgrade to Premium →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== AI STUDY ASSISTANT (PREMIUM) ===== -->
+      <div class="page" id="page-ai-assistant">
+        <div class="page-header"><h1>🤖 AI Study Assistant</h1><p>Ask about your courses, drugs, errors, or NCLEX prep — grounded in your own logged data</p></div>
+        <div class="premium-gate" id="ai-gate">
+
+          <div style="display:flex;gap:0.6rem;flex-wrap:wrap;margin-bottom:1.25rem;">
+            <button class="btn-add" style="padding:0.4rem 0.85rem;font-size:0.78rem;" onclick="askAssistant('What am I weakest in right now?')">What am I weakest in?</button>
+            <button class="btn-add" style="padding:0.4rem 0.85rem;font-size:0.78rem;" onclick="askAssistant('Quiz me on yesterday\'s drugs')">Quiz me on yesterday's drugs</button>
+            <button class="btn-add" style="padding:0.4rem 0.85rem;font-size:0.78rem;" onclick="askAssistant('Summarize my study week')">Summarize my study week</button>
+            <button class="btn-add" style="padding:0.4rem 0.85rem;font-size:0.78rem;" onclick="askAssistant('Give me an NCLEX practice question')">NCLEX practice question</button>
+          </div>
+
+          <div class="card" style="display:flex;flex-direction:column;height:460px;padding:0;overflow:hidden;">
+            <div id="ai-chat-log" style="flex:1;overflow-y:auto;padding:1.25rem;display:flex;flex-direction:column;gap:0.75rem;"></div>
+            <div style="border-top:1px solid var(--border);padding:0.85rem;display:flex;gap:0.5rem;background:var(--bg-card);">
+              <input class="field-input" id="ai-chat-input" placeholder="Ask your study assistant anything..." style="flex:1;" onkeydown="if(event.key==='Enter')sendAssistantMessage()">
+              <button class="btn-add" onclick="sendAssistantMessage()">Send</button>
+            </div>
+          </div>
+          <div style="font-size:0.72rem;color:var(--text-muted);margin-top:0.6rem;font-family:'Nunito',sans-serif;font-style:italic;">
+            Demo mode — responses are generated locally from patterns in your logged data. In production this connects to a live LLM backend (see spec §7.6) with the same grounding in your real courses, error log, and drug log.
+          </div>
+
+          <div class="premium-lock-overlay" id="ai-lock" onclick="openPremiumModal()">
+            <div class="lock-icon">🔒</div>
+            <div class="lock-label">Premium Feature</div>
+            <div class="lock-sub">AI Study Assistant is part of the paid plan</div>
+            <button class="lock-btn" onclick="event.stopPropagation();openPremiumModal()">Upgrade to Premium →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== SETTINGS PAGE ===== -->
+      <div class="page" id="page-settings">
+        <div class="page-header"><h1 data-i18n="settings-title">Settings</h1><p data-i18n="settings-sub">Personalise your experience</p></div>
+
+        <div class="settings-section">
+          <h3>🏫 Account Type</h3>
+          <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.85rem;font-family:'Nunito',sans-serif;font-style:italic;">Demo switcher — everything below changes depending on account type, so individual students, institutional students, and admins each see only what's relevant to them (no mixing). In production this is set automatically by how you signed up.</div>
+          <div class="field-group" style="max-width:340px;">
+            <select class="field-select" id="account-type-select" onchange="setAccountType(this.value)">
+              <option value="individual">Individual Student</option>
+              <option value="institutional_student">Institutional Student (enrolled by school)</option>
+              <option value="institutional_admin">Institutional Admin / Faculty</option>
+            </select>
+          </div>
+          <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.6rem;" id="account-type-note"></div>
+        </div>
+
+        <!-- ===== SUBSCRIPTION — shared widget for Individual + Institutional Student ===== -->
+        <div class="settings-section settings-for-individual settings-for-institutional_student">
+          <h3>💳 Subscription</h3>
+          <div id="sub-institution-note" style="display:none;font-size:0.78rem;color:var(--olive-dark);background:var(--olive-light);padding:0.5rem 0.75rem;border-radius:8px;margin-bottom:0.75rem;">🏫 Your core access is included through your institution's program license. A personal Premium upgrade below adds extras your school's plan may not cover (e.g. AI Study Assistant usage beyond the institutional quota).</div>
+          <div id="sub-status-free" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;">
+            <div>
+              <div style="font-family:'Caveat',cursive;font-size:1.1rem;color:var(--text-primary);">Free Plan</div>
+              <div style="font-size:0.78rem;color:var(--text-muted);">Unlock NCLEX Tracker, Drug Tracker, AI Study Assistant, and Study Groups.</div>
+            </div>
+            <div style="display:flex;gap:0.5rem;">
+              <button class="btn-primary" style="width:auto;padding:0.5rem 1rem;font-size:0.82rem;" onclick="mockSubscribe('monthly')">Upgrade — Monthly</button>
+              <button class="btn-outline" style="padding:0.5rem 1rem;font-size:0.82rem;" onclick="mockSubscribe('yearly')">Upgrade — Yearly (save 20%)</button>
+            </div>
+          </div>
+          <div id="sub-status-premium" style="display:none;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;">
+            <div>
+              <div style="font-family:'Caveat',cursive;font-size:1.1rem;color:var(--olive);">🔓 Premium — <span id="sub-plan-label">Monthly</span></div>
+              <div style="font-size:0.78rem;color:var(--text-muted);">Renews <span id="sub-renew-date">—</span></div>
+            </div>
+            <button class="btn-outline" style="padding:0.5rem 1rem;font-size:0.82rem;" onclick="mockManageSubscription()">Manage Subscription</button>
+          </div>
+          <div style="font-size:0.7rem;color:var(--text-muted);margin-top:0.75rem;font-family:'Nunito',sans-serif;font-style:italic;">Demo mode — wires to Stripe Checkout + Customer Portal in production (see spec §7.2).</div>
+        </div>
+
+        <!-- ===== INSTITUTION MANAGEMENT — Admin only ===== -->
+        <div class="settings-section settings-for-institutional_admin">
+          <h3>🏫 Institution Management</h3>
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;margin-bottom:0.85rem;">
+            <div>
+              <div style="font-family:'Caveat',cursive;font-size:1.1rem;color:var(--text-primary);">Riverside School of Nursing</div>
+              <div style="font-size:0.78rem;color:var(--text-muted);">Flat Institutional License · 42 seats enrolled</div>
+            </div>
+            <button class="btn-outline" style="padding:0.5rem 1rem;font-size:0.82rem;" onclick="showNotif('Demo mode — opens institutional billing/invoicing in production 🏫')">Manage Billing</button>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-row-info">
+              <div class="toggle-row-label">Require Student Consent Before Grade Visibility</div>
+              <div class="toggle-row-desc">Students must explicitly consent before their Course Grade and Practice Grade appear on your Institution Dashboard</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="setting-require-consent" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <button class="btn-primary" style="width:auto;padding:0.6rem 1.5rem;font-size:0.85rem;margin-top:0.75rem;" onclick="showPage('institution')">Open Institution Dashboard →</button>
+        </div>
+
+        <!-- ===== DATA SHARING — Institutional Student only ===== -->
+        <div class="settings-section settings-for-institutional_student">
+          <h3>🔐 Data Sharing With My Institution</h3>
+          <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.85rem;font-family:'Nunito',sans-serif;font-style:italic;">This controls whether your program's admin can see your Course Grade and Practice Grade. Your school roster/cohort details are managed by your admin, not shown here.</div>
+          <div class="toggle-row">
+            <div class="toggle-row-info">
+              <div class="toggle-row-label">Share my grades with my institution admin</div>
+              <div class="toggle-row-desc">Enrolled program: Riverside School of Nursing</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="setting-consent-share" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- ===== NCLEX TRACKER — Individual + Institutional Student ===== -->
+        <div class="settings-section settings-for-individual settings-for-institutional_student">
+          <h3>🩺 NCLEX Tracker</h3>
+          <div class="toggle-row">
+            <div class="toggle-row-info">
+              <div class="toggle-row-label">Enable NCLEX Performance Tracking</div>
+              <div class="toggle-row-desc">Adds the NCLEX Tracker page to your sidebar. Only relevant if you're preparing for the NCLEX exam.</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="setting-nclex" onchange="toggleNclexOpt(this.checked)">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- ===== DRUG TRACKER — Individual + Institutional Student ===== -->
+        <div class="settings-section settings-for-individual settings-for-institutional_student">
+          <h3>💊 Drug Tracker</h3>
+          <div class="toggle-row">
+            <div class="toggle-row-info">
+              <div class="toggle-row-label">Daily Drug Reminder</div>
+              <div class="toggle-row-desc">Remind yourself to log 2 drugs each day (browser notifications)</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="setting-drug-reminder">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-row-info">
+              <div class="toggle-row-label">Yesterday's Quiz on App Open</div>
+              <div class="toggle-row-desc">Show the drug quiz automatically when you open the app</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="setting-drug-quiz" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- ===== STUDY GROUPS — Individual + Institutional Student (both can run personal peer groups) ===== -->
+        <div class="settings-section settings-for-individual settings-for-institutional_student">
+          <h3>👥 Study Groups</h3>
+          <div id="settings-no-group" style="font-size:0.82rem;color:var(--text-muted);font-family:'Nunito',sans-serif;font-style:italic;">You're not in a group yet. Visit the Study Groups page to create or join one.</div>
+          <div id="settings-has-group" style="display:none;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;">
+            <div style="font-size:0.85rem;color:var(--text-secondary);">You're in <strong id="settings-group-name-label">—</strong></div>
+            <button class="btn-outline" style="padding:0.35rem 0.85rem;font-size:0.78rem;" onclick="leaveGroup()">Leave Group</button>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3>🔔 Notifications</h3>
+          <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.85rem;font-family:'Nunito',sans-serif;font-style:italic;">Choose how you want to be reminded — pick any combination per notification type.</div>
+          <div id="notif-matrix" style="display:flex;flex-direction:column;gap:0.65rem;"></div>
+        </div>
+
+        <div class="settings-section">
+          <h3>🌐 Language / Langue</h3>
+          <div style="display:flex;gap:0.65rem;">
+            <button id="lang-btn-en" class="btn-add" style="padding:0.5rem 1.1rem;" onclick="setLanguage('en')">English</button>
+            <button id="lang-btn-fr" class="btn-add" style="padding:0.5rem 1.1rem;" onclick="setLanguage('fr')">Français</button>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3>📤 Export My Data</h3>
+          <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.85rem;font-family:'Nunito',sans-serif;font-style:italic;">Download your planner data as a spreadsheet or a formatted semester report.</div>
+          <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+            <select class="field-select" id="export-scope" style="width:auto;font-size:0.82rem;padding:0.4rem;">
+              <option value="semester">This semester</option>
+              <option value="all">All-time</option>
+            </select>
+            <button class="btn-add" onclick="exportDataCSV()">⬇ Export CSV</button>
+            <button class="btn-add" onclick="exportDataPDF()">⬇ Export PDF Report</button>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3>🎨 Appearance</h3>
+          <div class="toggle-row" style="border-bottom:1px solid var(--border);padding-bottom:1rem;margin-bottom:1rem;">
+            <div class="toggle-row-info">
+              <div class="toggle-row-label">Colour Mode</div>
+              <div class="toggle-row-desc">Choose between Light (palette colours), clean White, or Dark mode</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:0.65rem;margin-bottom:1.25rem;flex-wrap:wrap;">
+            <button id="mode-btn-mode-light" onclick="setMode('mode-light')" style="flex:1;min-width:80px;padding:0.65rem 0.5rem;border:1.5px solid var(--p1);border-radius:12px;background:var(--p1-light);cursor:pointer;font-size:0.82rem;font-family:'DM Sans',sans-serif;color:var(--terracotta-dark);transition:all 0.2s;">
+              ☀️<br><span style="font-size:0.7rem;">Light</span>
+            </button>
+            <button id="mode-btn-mode-white" onclick="setMode('mode-white')" style="flex:1;min-width:80px;padding:0.65rem 0.5rem;border:1.5px solid var(--border-strong);border-radius:12px;background:none;cursor:pointer;font-size:0.82rem;font-family:'DM Sans',sans-serif;color:var(--text-secondary);transition:all 0.2s;">
+              ⬜<br><span style="font-size:0.7rem;">White</span>
+            </button>
+            <button id="mode-btn-mode-dark" onclick="setMode('mode-dark')" style="flex:1;min-width:80px;padding:0.65rem 0.5rem;border:1.5px solid var(--border-strong);border-radius:12px;background:none;cursor:pointer;font-size:0.82rem;font-family:'DM Sans',sans-serif;color:var(--text-secondary);transition:all 0.2s;">
+              🌙<br><span style="font-size:0.7rem;">Dark</span>
+            </button>
+          </div>
+          <button class="btn-primary" style="width:auto;padding:0.6rem 1.5rem;font-size:0.85rem;" onclick="openProfile()">Open Profile Settings</button>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ===== PREMIUM UPGRADE MODAL ===== -->
+<div id="premium-modal" style="display:none;position:fixed;inset:0;background:rgba(45,31,20,0.55);z-index:10000;align-items:center;justify-content:center;">
+  <div class="premium-modal-card">
+    <button onclick="closePremiumModal()" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--text-muted);">✕</button>
+    <div style="font-size:2.5rem;margin-bottom:0.5rem;">🌿</div>
+    <h2>Go Premium</h2>
+    <div style="font-size:0.88rem;color:var(--text-muted);font-family:'Nunito',sans-serif;font-style:italic;margin-bottom:0.5rem;">Unlock the full nursing academic OS</div>
+    <div class="premium-features-list">
+      <div class="premium-feature-row"><div class="feat-icon">🩺</div><div><strong>NCLEX Performance Tracker</strong><br><span style="color:var(--text-muted);font-size:0.8rem;">Track every category, session history, readiness score</span></div></div>
+      <div class="premium-feature-row"><div class="feat-icon">💊</div><div><strong>Pharmacology Drug Tracker</strong><br><span style="color:var(--text-muted);font-size:0.8rem;">2 drugs/day, full properties, daily quiz, drug library</span></div></div>
+      <div class="premium-feature-row"><div class="feat-icon">👥</div><div><strong>Study Groups + Group Streak</strong><br><span style="color:var(--text-muted);font-size:0.8rem;">Coming soon — collaborate and streak together</span></div></div>
+    </div>
+    <div style="background:var(--terracotta-light);border-radius:10px;padding:1rem;margin-bottom:1.25rem;">
+      <div style="font-family:'Caveat',cursive;font-size:1.4rem;color:var(--terracotta-dark);">Coming Soon</div>
+      <div style="font-size:0.8rem;color:var(--text-muted);font-family:'Nunito',sans-serif;font-style:italic;">Stripe payments are being set up. For now you can enable Premium manually in Settings.</div>
+    </div>
+    <button class="btn-primary" style="margin-top:0;" onclick="closePremiumModal();showPage('settings');document.getElementById('setting-premium').scrollIntoView({behavior:'smooth'});">Go to Settings to Enable →</button>
+  </div>
+</div>
+
+<!-- STUDENT PROFILE MODAL -->
+<div id="profile-modal" style="display:none;position:fixed;inset:0;background:rgba(45,31,20,0.5);z-index:9999;align-items:center;justify-content:center;overflow-y:auto;-webkit-overflow-scrolling:touch;">
+  <div style="background:var(--bg-card);border-radius:20px;padding:2rem;width:90%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-md);border:1px solid var(--border);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
+      <h2 style="font-family:'Caveat', cursive;font-size:1.3rem;color:var(--terracotta);">✏️ Edit Profile</h2>
+      <button onclick="closeProfile()" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--text-muted);">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;">
+      <div class="field-group"><div class="field-label">Full Name</div><input class="field-input" id="prof-name" placeholder="Your name"></div>
+      <div class="field-group"><div class="field-label">Age</div><input class="field-input" id="prof-age" type="number" placeholder="22"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;">
+      <div class="field-group"><div class="field-label">Email</div><input class="field-input" id="prof-email" placeholder="email@example.com"></div>
+      <div class="field-group"><div class="field-label">Nursing Year</div>
+        <select class="field-select" id="prof-year"><option>Year 1</option><option>Year 2</option><option>Year 3</option><option>Year 4</option><option>Postgraduate</option></select>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;">
+      <div class="field-group"><div class="field-label">Study Strategy</div>
+        <select class="field-select" id="prof-strategy"><option>Active Recall</option><option>Spaced Repetition</option><option>Mind Mapping</option><option>Practice Questions</option><option>Visual Learning</option></select>
+      </div>
+      <div class="field-group"><div class="field-label">Nursing Specialty</div>
+        <select class="field-select" id="prof-specialty"><option>General Nursing</option><option>ICU / Critical Care</option><option>Pediatrics</option><option>Emergency</option><option>Oncology</option><option>Mental Health</option></select>
+      </div>
+    </div>
+    <div style="background:var(--ochre-light);border-radius:10px;padding:1rem;margin-bottom:0.75rem;">
+      <div style="font-size:0.78rem;font-weight:600;color:#7A5A10;margin-bottom:0.75rem;text-transform:uppercase;letter-spacing:0.05em;">📊 Study Goals</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+        <div class="field-group"><div class="field-label">Daily Study Goal (hrs)</div><input class="field-input" id="prof-daily-goal" type="number" value="3" min="1" max="12" step="0.5"></div>
+        <div class="field-group"><div class="field-label">Weekly Study Goal (hrs)</div><input class="field-input" id="prof-weekly-goal" type="number" value="21" min="1" max="84"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-top:0.75rem;">
+        <div class="field-group"><div class="field-label">Sleep Goal (hrs)</div><input class="field-input" id="prof-sleep-goal" type="number" value="8" min="4" max="12" step="0.5"></div>
+        <div class="field-group"><div class="field-label">Water Goal (glasses)</div><input class="field-input" id="prof-water-goal" type="number" value="8" min="4" max="20"></div>
+      </div>
+    </div>
+    <div class="field-group" style="margin-bottom:0.75rem;"><div class="field-label">Why I Need This Planner</div><textarea class="field-textarea" id="prof-reason" placeholder="Your motivation..." style="min-height:60px;"></textarea></div>
+
+    <div style="margin-bottom:1rem;">
+      <div class="field-label" style="margin-bottom:0.5rem;">🎨 Color Palette</div>
+      <div id="profile-palette-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem;max-height:200px;overflow-y:auto;"></div>
+    </div>
+
+    <div style="margin-bottom:0.75rem;">
+      <div class="field-label" style="margin-bottom:0.5rem;">✨ Style Theme</div>
+      <div style="display:flex;gap:0.5rem;">
+        <button onclick="setGenderTheme('female',this)" class="theme-btn" style="flex:1;padding:0.5rem;border:1.5px solid var(--border-strong);border-radius:20px;background:none;cursor:pointer;font-size:0.78rem;font-family:'Nunito',sans-serif;color:var(--text-secondary);">🌸 Feminine</button>
+        <button onclick="setGenderTheme('male',this)" class="theme-btn" style="flex:1;padding:0.5rem;border:1.5px solid var(--border-strong);border-radius:20px;background:none;cursor:pointer;font-size:0.78rem;font-family:'Nunito',sans-serif;color:var(--text-secondary);">🏔️ Masculine</button>
+        <button onclick="setGenderTheme('neutral',this)" class="theme-btn" style="flex:1;padding:0.5rem;border:1.5px solid var(--border-strong);border-radius:20px;background:none;cursor:pointer;font-size:0.78rem;font-family:'Nunito',sans-serif;color:var(--text-secondary);">🌿 Neutral</button>
+      </div>
+    </div>
+
+    <div style="margin-bottom:0.75rem;">
+      <div class="field-label" style="margin-bottom:0.5rem;">🌓 Colour Mode</div>
+      <div style="display:flex;gap:0.5rem;">
+        <button onclick="setMode('mode-light')" id="prof-mode-light" style="flex:1;padding:0.5rem;border:1.5px solid var(--border-strong);border-radius:20px;background:none;cursor:pointer;font-size:0.78rem;font-family:'Nunito',sans-serif;color:var(--text-secondary);">☀️ Light</button>
+        <button onclick="setMode('mode-white')" id="prof-mode-white" style="flex:1;padding:0.5rem;border:1.5px solid var(--border-strong);border-radius:20px;background:none;cursor:pointer;font-size:0.78rem;font-family:'Nunito',sans-serif;color:var(--text-secondary);">⬜ White</button>
+        <button onclick="setMode('mode-dark')" id="prof-mode-dark" style="flex:1;padding:0.5rem;border:1.5px solid var(--border-strong);border-radius:20px;background:none;cursor:pointer;font-size:0.78rem;font-family:'Nunito',sans-serif;color:var(--text-secondary);">🌙 Dark</button>
+      </div>
+    </div>
+
+    <button class="btn-primary" onclick="saveProfile()" style="margin-top:0;">💾 Save Profile</button>
+  </div>
+</div>
+
+<!-- DAY EVENT MODAL -->
+<div id="day-modal" style="display:none;position:fixed;inset:0;background:rgba(45,31,20,0.5);z-index:9998;align-items:center;justify-content:center;">
+  <div style="background:var(--bg-card);border-radius:20px;padding:1.75rem;width:90%;max-width:420px;box-shadow:var(--shadow-md);border:1px solid var(--border);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+      <h3 style="font-family:'Caveat', cursive;font-size:1.1rem;" id="day-modal-title">Add Task</h3>
+      <button onclick="closeDayModal()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--text-muted);">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:0.65rem;">
+      <div class="field-group"><div class="field-label">Task / Event</div><input class="field-input" id="day-task-input" placeholder="e.g., Study Pharmacology Ch.8"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.65rem;">
+        <div class="field-group"><div class="field-label">Type</div>
+          <select class="field-select" id="day-task-type">
+            <option value="evt-exam">Exam/Study</option>
+            <option value="evt-assign">Assignment</option>
+            <option value="evt-clinical">Clinical</option>
+            <option value="evt-study">Study Session</option>
+          </select>
+        </div>
+        <div class="field-group"><div class="field-label">Time (optional)</div><input class="field-input" id="day-task-time" type="time"></div>
+      </div>
+      <button class="btn-primary" onclick="saveDayTask()" style="margin-top:0.25rem;">+ Add to Calendar</button>
+    </div>
+    <div id="day-tasks-list" style="margin-top:1rem;max-height:180px;overflow-y:auto;"></div>
+  </div>
+</div>
+<!-- NOTIFICATION -->
+<!-- THEME TOGGLE BUTTON -->
+
+<div class="notification" id="notification">
+  <span id="notif-text">Notification</span>
+</div>
+
+<script src="js/state.js"></script>
+<script src="js/onboarding.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/theme.js"></script>
+<script src="js/navigation.js"></script>
+<script src="js/calendar.js"></script>
+<script src="js/trackers.js"></script>
+<script src="js/planner.js"></script>
+<script src="js/grades.js"></script>
+<script src="js/premium-features.js"></script>
+<script src="js/groups.js"></script>
+<script src="js/assistant.js"></script>
+<script src="js/notifications.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/export.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

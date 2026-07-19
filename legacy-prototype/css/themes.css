@@ -1,0 +1,117 @@
+/* ============================================================
+   MyLifePlanner — themes.css
+   White and Dark colour-mode overrides. Light is the default (palette-driven, no overrides needed).
+   ============================================================ */
+
+/* ===== LIGHT MODE (default palette-driven) ===== */
+body.mode-light {
+  /* inherits all --bg-main etc from JS applyPalette — no overrides needed */
+}
+
+/* ===== WHITE (CLEAN) MODE ===== */
+body.mode-white {
+  --bg-main: #F7F8FA !important;
+  --bg-card: #FFFFFF !important;
+  --bg-sidebar: #F0F1F4 !important;
+  --text-primary: #1A1A1A !important;
+  --text-secondary: #444444 !important;
+  --text-muted: #888888 !important;
+  --border: rgba(0,0,0,0.08) !important;
+  --border-strong: rgba(0,0,0,0.16) !important;
+  --shadow: 0 2px 12px rgba(0,0,0,0.06) !important;
+  --shadow-md: 0 4px 20px rgba(0,0,0,0.10) !important;
+  --p1-light: #F5EEE8 !important;
+  --p2-light: #EEF2E8 !important;
+  --p3-light: #F5F0E0 !important;
+  --p4-light: #E8F0EC !important;
+  --terracotta-light: #F5EEE8 !important;
+  --terracotta-dark: #8B4A2F !important;
+  --olive-light: #EEF2E8 !important;
+  --olive-dark: #3D4A25 !important;
+  --ochre-light: #F5F0E0 !important;
+  --forest-light: #E8F0EC !important;
+}
+body.mode-white .form-section,
+body.mode-white .stat-card,
+body.mode-white .card { background: #FFFFFF !important; }
+body.mode-white .field-input,
+body.mode-white .field-select,
+body.mode-white .field-textarea,
+body.mode-white .drug-field-input,
+body.mode-white .drug-field-textarea { background: #F2F3F5 !important; border-color: rgba(0,0,0,0.13) !important; color: #1A1A1A !important; }
+body.mode-white .greeting-banner { background: linear-gradient(135deg, #F5EEE8, #F5F0E0) !important; }
+body.mode-white .streak-mini { background: #F5F0E0 !important; border-color: rgba(196,154,58,0.2) !important; }
+
+/* ===== DARK MODE ===== */
+body.mode-dark {
+  --bg-main: #111110 !important;
+  --bg-card: #1A1916 !important;
+  --bg-sidebar: #0E0D0C !important;
+  --text-primary: #EEE8DC !important;
+  --text-secondary: #C0AE94 !important;
+  --text-muted: #7A6A54 !important;
+  --border: rgba(255,210,160,0.09) !important;
+  --border-strong: rgba(255,210,160,0.18) !important;
+  --shadow: 0 2px 16px rgba(0,0,0,0.5) !important;
+  --shadow-md: 0 4px 28px rgba(0,0,0,0.6) !important;
+  --p1-light: rgba(196,112,74,0.16) !important;
+  --p2-light: rgba(107,124,74,0.16) !important;
+  --p3-light: rgba(196,154,58,0.16) !important;
+  --p4-light: rgba(45,90,61,0.16) !important;
+  --terracotta-light: rgba(196,112,74,0.16) !important;
+  --terracotta-dark: #E8956A !important;
+  --olive-light: rgba(107,124,74,0.16) !important;
+  --olive-dark: #A8C070 !important;
+  --ochre-light: rgba(196,154,58,0.16) !important;
+  --forest-light: rgba(45,90,61,0.16) !important;
+}
+body.mode-dark .field-input,
+body.mode-dark .field-select,
+body.mode-dark .field-textarea,
+body.mode-dark .drug-field-input,
+body.mode-dark .drug-field-textarea,
+body.mode-dark .form-group input,
+body.mode-dark .form-group select,
+body.mode-dark .form-group textarea {
+  background: #1A1916 !important;
+  color: #EEE8DC !important;
+  border-color: rgba(255,210,160,0.18) !important;
+}
+body.mode-dark .field-input:focus,
+body.mode-dark .field-select:focus,
+body.mode-dark .field-textarea:focus { border-color: var(--p1) !important; }
+body.mode-dark .onboard-card { background: #1A1916 !important; }
+body.mode-dark .gender-card { background: #1A1916 !important; border-color: rgba(255,210,160,0.15) !important; }
+body.mode-dark .gender-card:hover, body.mode-dark .gender-card.selected { background: rgba(196,112,74,0.16) !important; }
+body.mode-dark .palette-card { background: #111110 !important; border-color: rgba(255,210,160,0.12) !important; }
+body.mode-dark .form-section { background: #1A1916 !important; border-color: rgba(255,210,160,0.09) !important; }
+body.mode-dark .stat-card { background: #1A1916 !important; }
+body.mode-dark .drug-history-card,
+body.mode-dark .nclex-session-row,
+body.mode-dark .quiz-drug-card,
+body.mode-dark .drug-entry-card { background: #1A1916 !important; }
+body.mode-dark .quiz-answer-box { background: rgba(107,124,74,0.14) !important; color: #C0AE94 !important; }
+body.mode-dark .streak-mini { background: rgba(196,154,58,0.10) !important; border-color: rgba(196,154,58,0.14) !important; }
+body.mode-dark .greeting-banner { background: linear-gradient(135deg, rgba(196,112,74,0.14), rgba(196,154,58,0.10)) !important; }
+body.mode-dark .affirmation-banner { background: rgba(107,124,74,0.12) !important; border-color: rgba(107,124,74,0.18) !important; }
+body.mode-dark .premium-modal-card,
+body.mode-dark #profile-modal > div,
+body.mode-dark #day-modal > div { background: #1A1916 !important; }
+body.mode-dark .tab-btn { background: #1A1916 !important; color: #C0AE94 !important; border-color: rgba(255,210,160,0.12) !important; }
+body.mode-dark .tab-btn.active { background: rgba(196,112,74,0.16) !important; color: #E8956A !important; }
+body.mode-dark .schedule-table th,
+body.mode-dark .time-col { background: #1A1916 !important; color: #7A6A54 !important; border-color: rgba(255,210,160,0.09) !important; }
+body.mode-dark .schedule-table td { border-color: rgba(255,210,160,0.09) !important; }
+body.mode-dark .resource-card { background: #1A1916 !important; border-color: rgba(255,210,160,0.09) !important; }
+body.mode-dark .resource-card:hover { background: rgba(196,112,74,0.08) !important; }
+body.mode-dark .progress-bar { background: rgba(255,210,160,0.08) !important; }
+body.mode-dark .notification { background: #252220 !important; border-color: rgba(255,210,160,0.18) !important; color: #EEE8DC !important; }
+body.mode-dark .mobile-bottom-nav { background: #1A1916 !important; border-top-color: rgba(255,210,160,0.15) !important; }
+body.mode-dark .settings-section { background: #1A1916 !important; }
+body.mode-dark .toggle-slider { background: #3A3530 !important; }
+body.mode-dark .nclex-bar-wrap { background: rgba(255,210,160,0.10) !important; }
+body.mode-dark ::-webkit-scrollbar { width: 6px; height: 6px; }
+body.mode-dark ::-webkit-scrollbar-track { background: #111110; }
+body.mode-dark ::-webkit-scrollbar-thumb { background: #2E2A24; border-radius: 3px; }
+body.mode-dark .premium-lock-overlay { background: rgba(17,17,16,0.82) !important; }
+body.mode-dark .page::before, body.mode-dark .page::after { opacity: 0.03 !important; }
