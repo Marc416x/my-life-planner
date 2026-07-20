@@ -1,20 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 
-type Block = { day: string; start: string; end: string; subject: string; type: string };
+type Block = {
+  id: string;
+  day: string;
+  start_label: string;
+  end_label: string | null;
+  subject: string;
+  type: string;
+};
 
 const TIMES = ["8:00 AM", "9:00 AM", "10:00 AM", "11:00 AM", "12:00 PM", "1:00 PM", "2:00 PM", "3:00 PM", "4:00 PM", "5:00 PM"];
 const COLS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-
-const DEFAULT_BLOCKS: Block[] = [
-  { day: "Monday", start: "9:00 AM", end: "10:30 AM", subject: "NUR301 Pharmacology", type: "sch-lecture" },
-  { day: "Tuesday", start: "11:00 AM", end: "12:30 PM", subject: "NUR310 Clinical Lab", type: "sch-clinical" },
-  { day: "Wednesday", start: "9:00 AM", end: "10:30 AM", subject: "NUR301 Pharmacology", type: "sch-lecture" },
-  { day: "Wednesday", start: "11:00 AM", end: "12:00 PM", subject: "NUR310 Lab", type: "sch-lab" },
-  { day: "Thursday", start: "2:00 PM", end: "3:00 PM", subject: "Study Session — Library", type: "sch-study" },
-  { day: "Friday", start: "10:00 AM", end: "11:30 AM", subject: "NUR201 Fundamentals", type: "sch-lecture" },
-];
 
 function fmt(t: string) {
   const [h, m] = t.split(":");
@@ -23,20 +22,54 @@ function fmt(t: string) {
 }
 
 export default function SchedulePage() {
-  const [blocks, setBlocks] = useState<Block[]>(DEFAULT_BLOCKS);
+  const supabase = createClient();
+  const [blocks, setBlocks] = useState<Block[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
   const [day, setDay] = useState("Monday");
   const [start, setStart] = useState("09:00");
   const [end, setEnd] = useState("10:30");
   const [subject, setSubject] = useState("");
   const [type, setType] = useState("sch-lecture");
+  const [notice, setNotice] = useState("");
 
-  const addBlock = () => {
-    if (!subject.trim()) return;
-    setBlocks([...blocks, { day, start: fmt(start), end: fmt(end), subject: subject.trim(), type }]);
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUserId(user?.id ?? null);
+      const { data } = await supabase
+        .from("schedule_blocks")
+        .select("*")
+        .order("created_at", { ascending: true });
+      setBlocks((data as Block[]) ?? []);
+      setLoading(false);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function addBlock() {
+    if (!subject.trim() || !userId) return;
+    const startLabel = fmt(start);
+    // Prevent two blocks on the same day at the same start time (they'd overlap).
+    if (blocks.some((b) => b.day === day && b.start_label === startLabel)) {
+      setNotice(`You already have a class on ${day} at ${startLabel}. Remove it first or pick another time.`);
+      return;
+    }
+    setNotice("");
+    const { data, error } = await supabase
+      .from("schedule_blocks")
+      .insert({ user_id: userId, day, start_label: startLabel, end_label: fmt(end), subject: subject.trim(), type })
+      .select()
+      .single();
+    if (!error && data) setBlocks((b) => [...b, data as Block]);
     setSubject("");
-  };
+  }
 
-  const removeBlock = (idx: number) => setBlocks(blocks.filter((_, i) => i !== idx));
+  async function removeBlock(id: string) {
+    setBlocks((b) => b.filter((x) => x.id !== id));
+    await supabase.from("schedule_blocks").delete().eq("id", id);
+  }
 
   return (
     <div className="page active">
@@ -63,11 +96,14 @@ export default function SchedulePage() {
           </div>
           <button className="btn-add" onClick={addBlock} style={{ padding: "0.5rem 0.75rem", fontSize: "0.82rem", whiteSpace: "nowrap" }}>+ Add</button>
         </div>
+        {notice && (
+          <div style={{ marginTop: "0.6rem", fontSize: "0.8rem", color: "var(--terracotta-dark)" }}>{notice}</div>
+        )}
       </div>
 
       <div className="card" style={{ marginBottom: "1rem" }}>
         <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginBottom: "0.75rem" }}>
-          Your weekly class schedule · Click × to remove a block
+          {loading ? "Loading your schedule…" : "Your weekly class schedule · Click × to remove a block"}
         </div>
         <div className="schedule-wrapper">
           <table className="schedule-table">
@@ -84,19 +120,18 @@ export default function SchedulePage() {
                   {COLS.map((col) => (
                     <td key={col} style={{ position: "relative" }}>
                       {blocks
-                        .map((b, i) => ({ b, i }))
-                        .filter(({ b }) => b.day === col && b.start === t)
-                        .map(({ b, i }) => (
+                        .filter((b) => b.day === col && b.start_label === t)
+                        .map((b) => (
                           <div
-                            key={i}
+                            key={b.id}
                             className={"schedule-event " + b.type}
                             style={{ position: "absolute", top: 3, left: 3, right: 3, bottom: 3, overflow: "hidden", fontSize: "0.65rem" }}
                           >
                             {b.subject}
                             <br />
-                            <span style={{ opacity: 0.7 }}>{b.start}–{b.end}</span>
+                            <span style={{ opacity: 0.7 }}>{b.start_label}–{b.end_label}</span>
                             <button
-                              onClick={() => removeBlock(i)}
+                              onClick={() => removeBlock(b.id)}
                               aria-label="Remove block"
                               style={{ position: "absolute", top: 2, right: 2, background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.7)", fontSize: "0.7rem", lineHeight: 1 }}
                             >
