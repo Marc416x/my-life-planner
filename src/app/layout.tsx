@@ -7,6 +7,7 @@ import "@/styles/legacy/base.css";
 import "@/styles/legacy/themes.css";
 import "@/styles/legacy/responsive.css";
 import { AppShell } from "@/components/app-shell";
+import { ThemeInit } from "@/components/theme-init";
 
 // Body sans — rounded, friendly, readable. Populates --font-sans (the default body font).
 const nunito = Nunito({
@@ -41,6 +42,7 @@ export default function RootLayout({
       className={`${nunito.variable} ${caveat.variable} h-full antialiased`}
     >
       <body className="mode-light font-sans">
+        <ThemeInit />
         <AppShell>{children}</AppShell>
       </body>
     </html>
