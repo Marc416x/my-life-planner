@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import {
   Target,
   Ban,
@@ -50,15 +51,54 @@ export default function CalendarPage() {
   const [weekOffset, setWeekOffset] = useState(0);
   const [day, setDay] = useState(() => new Date());
 
-  // Simple local lists (data/persistence arrives in Phase 1)
-  const [books, setBooks] = useState<string[]>([]);
+  // Persisted lists (monthly books + weekly goals)
+  const supabase = createClient();
+  const [userId, setUserId] = useState<string | null>(null);
+  const [books, setBooks] = useState<{ id: string; title: string }[]>([]);
   const [bookTitle, setBookTitle] = useState("");
-  const [goals, setGoals] = useState<string[]>([]);
+  const [goals, setGoals] = useState<{ id: string; text: string }[]>([]);
   const [goalText, setGoalText] = useState("");
+  // Local-only for now (persisted in a later pass)
   const [dailyTasks, setDailyTasks] = useState<string[]>([]);
   const [dailyText, setDailyText] = useState("");
   const [mood, setMood] = useState("Okay");
   const [reflectionSaved, setReflectionSaved] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUserId(user?.id ?? null);
+      const [b, g] = await Promise.all([
+        supabase.from("reading_list").select("id,title").eq("kind", "monthly").order("created_at", { ascending: true }),
+        supabase.from("weekly_goals").select("id,text").order("created_at", { ascending: true }),
+      ]);
+      setBooks((b.data as { id: string; title: string }[]) ?? []);
+      setGoals((g.data as { id: string; text: string }[]) ?? []);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function addBook() {
+    if (!bookTitle.trim() || !userId) return;
+    const { data, error } = await supabase
+      .from("reading_list")
+      .insert({ user_id: userId, title: bookTitle.trim(), kind: "monthly" })
+      .select("id,title")
+      .single();
+    if (!error && data) setBooks((x) => [...x, data as { id: string; title: string }]);
+    setBookTitle("");
+  }
+
+  async function addGoal() {
+    if (!goalText.trim() || !userId) return;
+    const { data, error } = await supabase
+      .from("weekly_goals")
+      .insert({ user_id: userId, text: goalText.trim() })
+      .select("id,text")
+      .single();
+    if (!error && data) setGoals((x) => [...x, data as { id: string; text: string }]);
+    setGoalText("");
+  }
 
   const year = now.getFullYear();
 
@@ -254,7 +294,7 @@ export default function CalendarPage() {
                 placeholder="Book title..."
                 value={bookTitle}
                 onChange={(e) => setBookTitle(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && bookTitle.trim()) { setBooks([...books, bookTitle.trim()]); setBookTitle(""); } }}
+                onKeyDown={(e) => { if (e.key === "Enter") addBook(); }}
                 style={{ flex: 2, minWidth: 120, fontSize: "0.82rem", padding: "0.4rem 0.75rem" }}
               />
               <input className="field-input" placeholder="Author (optional)" style={{ flex: 1.5, minWidth: 100, fontSize: "0.82rem", padding: "0.4rem 0.75rem" }} />
@@ -263,12 +303,12 @@ export default function CalendarPage() {
                 <option value="reading">Reading</option>
                 <option value="done">Done</option>
               </select>
-              <button className="btn-add" onClick={() => { if (bookTitle.trim()) { setBooks([...books, bookTitle.trim()]); setBookTitle(""); } }} style={{ padding: "0.4rem 0.75rem", fontSize: "0.82rem" }}>+ Add</button>
+              <button className="btn-add" onClick={addBook} style={{ padding: "0.4rem 0.75rem", fontSize: "0.82rem" }}>+ Add</button>
             </div>
             {books.length ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", maxHeight: 200, overflowY: "auto" }}>
-                {books.map((b, i) => (
-                  <div className="data-item" key={i}><BookOpen size={14} /><span style={{ flex: 1, fontSize: "0.85rem" }}>{b}</span></div>
+                {books.map((b) => (
+                  <div className="data-item" key={b.id}><BookOpen size={14} /><span style={{ flex: 1, fontSize: "0.85rem" }}>{b.title}</span></div>
                 ))}
               </div>
             ) : (
@@ -342,15 +382,15 @@ export default function CalendarPage() {
                     placeholder="Add weekly goal..."
                     value={goalText}
                     onChange={(e) => setGoalText(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter" && goalText.trim()) { setGoals([...goals, goalText.trim()]); setGoalText(""); } }}
+                    onKeyDown={(e) => { if (e.key === "Enter") addGoal(); }}
                     style={{ flex: 1, fontSize: "0.82rem", padding: "0.4rem 0.65rem" }}
                   />
-                  <button className="btn-add" onClick={() => { if (goalText.trim()) { setGoals([...goals, goalText.trim()]); setGoalText(""); } }} style={{ padding: "0.4rem 0.6rem", fontSize: "0.82rem" }}>+</button>
+                  <button className="btn-add" onClick={addGoal} style={{ padding: "0.4rem 0.6rem", fontSize: "0.82rem" }}>+</button>
                 </div>
                 {goals.length ? (
                   <ul style={{ listStyle: "none" }}>
-                    {goals.map((g, i) => (
-                      <li className="data-item" key={i}><Target size={14} /><span style={{ flex: 1, fontSize: "0.85rem" }}>{g}</span></li>
+                    {goals.map((g) => (
+                      <li className="data-item" key={g.id}><Target size={14} /><span style={{ flex: 1, fontSize: "0.85rem" }}>{g.text}</span></li>
                     ))}
                   </ul>
                 ) : (

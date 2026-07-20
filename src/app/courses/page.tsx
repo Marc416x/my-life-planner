@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { GraduationCap, CalendarDays, Dumbbell, PenLine, ClipboardList, BookOpen } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 const cardTitle: React.CSSProperties = { display: "flex", alignItems: "center", gap: "0.45rem" };
 const row: React.CSSProperties = { display: "flex", alignItems: "center", gap: 6, marginBottom: 2 };
@@ -13,18 +14,39 @@ const courses = [
   { name: "Anatomy & Physiology", code: "NUR101", credits: 4, prof: "Prof. Davis", sem: "Spring 2026", diff: "Easy", diffColor: "var(--olive)", grade: "95%", assignments: 1, top: "var(--ochre)", nameColor: "#7A5A10" },
 ];
 
-type Book = { title: string; author: string; course: string; status: string };
+type Book = { id: string; title: string; author: string | null; course: string | null; status: string | null };
 
 export default function CoursesPage() {
+  const supabase = createClient();
   const [books, setBooks] = useState<Book[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
   const [course, setCourse] = useState("Pharmacology");
   const [status, setStatus] = useState("required");
 
-  const addBook = () => {
-    if (!title.trim()) return;
-    setBooks([...books, { title: title.trim(), author: author.trim(), course, status }]);
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUserId(user?.id ?? null);
+      const { data } = await supabase
+        .from("reading_list")
+        .select("*")
+        .eq("kind", "academic")
+        .order("created_at", { ascending: true });
+      setBooks((data as Book[]) ?? []);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const addBook = async () => {
+    if (!title.trim() || !userId) return;
+    const { data, error } = await supabase
+      .from("reading_list")
+      .insert({ user_id: userId, title: title.trim(), author: author.trim() || null, course, status, kind: "academic" })
+      .select()
+      .single();
+    if (!error && data) setBooks((b) => [...b, data as Book]);
     setTitle("");
     setAuthor("");
   };
@@ -107,8 +129,8 @@ export default function CoursesPage() {
 
         {books.length ? (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: "0.75rem", marginTop: "1rem" }}>
-            {books.map((b, i) => (
-              <div key={i} className="card" style={{ padding: "0.85rem" }}>
+            {books.map((b) => (
+              <div key={b.id} className="card" style={{ padding: "0.85rem" }}>
                 <div style={{ fontWeight: 600, fontSize: "0.88rem" }}>{b.title}</div>
                 {b.author && <div style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>{b.author}</div>}
                 <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: 4 }}>{b.course} · {b.status}</div>

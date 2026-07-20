@@ -10,17 +10,11 @@ import {
   CalendarClock,
   Target,
   BarChart3,
+  X,
 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
-type Task = { text: string; tag: string; tagClass: string; done: boolean };
-
-const initialTasks: Task[] = [
-  { text: "Review Pharmacology Chapter 8 — Drug Interactions", tag: "Study", tagClass: "tag-study", done: false },
-  { text: "Complete Nursing Assessment Case Study", tag: "Due Soon", tagClass: "tag-assign", done: false },
-  { text: "Clinical Prep — Patient Vitals & Medication Review", tag: "Clinical", tagClass: "tag-clinical", done: false },
-  { text: "Practice NCLEX Questions — Cardiovascular", tag: "Study", tagClass: "tag-study", done: false },
-  { text: "Pharmacology Mid-Term Exam", tag: "Exam", tagClass: "tag-exam", done: false },
-];
+type Task = { id: string; text: string; tag: string | null; tag_class: string | null; done: boolean };
 
 const chipStyle: React.CSSProperties = {
   fontSize: "0.8rem",
@@ -56,7 +50,10 @@ function Dot({ color }: { color: string }) {
 }
 
 export default function DashboardPage() {
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const supabase = createClient();
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [newTask, setNewTask] = useState("");
   const [greeting, setGreeting] = useState("Welcome back, Nurse!");
   const [dateLabel, setDateLabel] = useState("");
 
@@ -75,10 +72,43 @@ export default function DashboardPage() {
     );
   }, []);
 
-  const toggleTask = (i: number) =>
-    setTasks((ts) => ts.map((t, idx) => (idx === i ? { ...t, done: !t.done } : t)));
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUserId(user?.id ?? null);
+      const { data } = await supabase
+        .from("daily_tasks")
+        .select("*")
+        .order("created_at", { ascending: true });
+      setTasks((data as Task[]) ?? []);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function addTask() {
+    if (!newTask.trim() || !userId) return;
+    const { data, error } = await supabase
+      .from("daily_tasks")
+      .insert({ user_id: userId, text: newTask.trim() })
+      .select()
+      .single();
+    if (!error && data) setTasks((t) => [...t, data as Task]);
+    setNewTask("");
+  }
+
+  async function toggleTask(id: string, done: boolean) {
+    setTasks((t) => t.map((x) => (x.id === id ? { ...x, done } : x)));
+    await supabase.from("daily_tasks").update({ done }).eq("id", id);
+  }
+
+  async function removeTask(id: string) {
+    setTasks((t) => t.filter((x) => x.id !== id));
+    await supabase.from("daily_tasks").delete().eq("id", id);
+  }
 
   const doneCount = tasks.filter((t) => t.done).length;
+  const total = tasks.length;
+  const percent = total ? Math.round((doneCount / total) * 100) : 0;
 
   return (
     <div className="page active">
@@ -119,16 +149,11 @@ export default function DashboardPage() {
         </div>
         <div className="stat-card">
           <div className="stat-label">Tasks Completed</div>
-          <div className="stat-val">{doneCount}/{tasks.length}</div>
+          <div className="stat-val">{doneCount}/{total}</div>
           <div className="progress-bar">
-            <div
-              className="progress-fill fill-olive"
-              style={{ width: `${Math.round((doneCount / tasks.length) * 100)}%` }}
-            />
+            <div className="progress-fill fill-olive" style={{ width: `${percent}%` }} />
           </div>
-          <div className="stat-sub">
-            {Math.round((doneCount / tasks.length) * 100)}% done today
-          </div>
+          <div className="stat-sub">{percent}% done today</div>
         </div>
         <div className="stat-card">
           <div className="stat-label">Upcoming Exams</div>
@@ -148,30 +173,54 @@ export default function DashboardPage() {
           <div className="card-title" style={cardTitleStyle}>
             <ClipboardList size={18} /> Today&apos;s Tasks
           </div>
-          <ul className="today-tasks-list">
-            {tasks.map((t, i) => (
-              <li className="task-item" key={i}>
-                <div
-                  className={"task-check" + (t.done ? " done" : "")}
-                  onClick={() => toggleTask(i)}
-                  role="checkbox"
-                  aria-checked={t.done}
-                  aria-label={t.text}
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      toggleTask(i);
-                    }
-                  }}
-                />
-                <span style={t.done ? { textDecoration: "line-through", opacity: 0.6 } : undefined}>
-                  {t.text}
-                </span>
-                <span className={"task-tag " + t.tagClass}>{t.tag}</span>
-              </li>
-            ))}
-          </ul>
+          <div style={{ display: "flex", gap: "0.4rem", margin: "0.5rem 0 0.75rem" }}>
+            <input
+              className="field-input"
+              value={newTask}
+              onChange={(e) => setNewTask(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") addTask(); }}
+              placeholder="Add a task for today..."
+              style={{ flex: 1, fontSize: "0.85rem", padding: "0.4rem 0.75rem" }}
+            />
+            <button className="btn-add" onClick={addTask} style={{ padding: "0.4rem 0.75rem", fontSize: "0.82rem" }}>+</button>
+          </div>
+          {total ? (
+            <ul className="today-tasks-list">
+              {tasks.map((t) => (
+                <li className="task-item" key={t.id}>
+                  <div
+                    className={"task-check" + (t.done ? " done" : "")}
+                    onClick={() => toggleTask(t.id, !t.done)}
+                    role="checkbox"
+                    aria-checked={t.done}
+                    aria-label={t.text}
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        toggleTask(t.id, !t.done);
+                      }
+                    }}
+                  />
+                  <span style={t.done ? { textDecoration: "line-through", opacity: 0.6, flex: 1 } : { flex: 1 }}>
+                    {t.text}
+                  </span>
+                  {t.tag && <span className={"task-tag " + (t.tag_class ?? "")}>{t.tag}</span>}
+                  <button
+                    onClick={() => removeTask(t.id)}
+                    aria-label="Delete task"
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "inline-flex", padding: 2 }}
+                  >
+                    <X size={14} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", textAlign: "center", padding: "1rem", fontStyle: "italic" }}>
+              No tasks yet — add your first one above.
+            </div>
+          )}
         </div>
 
         <div className="card">
