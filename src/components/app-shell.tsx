@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Menu, X, LogOut, Leaf, Sprout } from "lucide-react";
 import { navSections } from "@/lib/nav";
+import { createClient } from "@/lib/supabase/client";
 
 // Faithful reproduction of the original prototype's sidebar + layout, using the
 // original CSS classes. Adds a proper mobile drawer (the part that was buggy)
@@ -12,7 +13,20 @@ import { navSections } from "@/lib/nav";
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
   const close = () => setOpen(false);
+
+  // Auth routes render without the app chrome (sidebar/topbar).
+  if (pathname.startsWith("/login") || pathname.startsWith("/auth")) {
+    return <>{children}</>;
+  }
+
+  const logout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  };
 
   const proBadge = (
     <span
@@ -150,8 +164,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           <div className="nav-section">
             <div className="nav-label">Session</div>
-            {/* Auth arrives in a later stage; log out is a placeholder for now. */}
-            <button type="button" className="nav-item" style={{ width: "100%", textAlign: "left", background: "none", border: "none", font: "inherit", cursor: "pointer" }}>
+            <button type="button" className="nav-item" onClick={logout} style={{ width: "100%", textAlign: "left", background: "none", border: "none", font: "inherit", cursor: "pointer" }}>
               <span className="nav-icon inline-flex items-center justify-center">
                 <LogOut size={16} />
               </span>
