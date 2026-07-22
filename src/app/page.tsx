@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   Flame,
   Palette,
@@ -16,6 +17,26 @@ import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/components/profile-provider";
 
 type Task = { id: string; text: string; tag: string | null; tag_class: string | null; done: boolean };
+type Priority = "high" | "medium" | "low";
+type Assignment = {
+  id: string;
+  title: string;
+  course: string | null;
+  due_date: string | null;
+  priority: Priority;
+  status: "pending" | "in_progress" | "completed";
+};
+
+const PRI: Record<Priority, { rank: number; color: string }> = {
+  high: { rank: 0, color: "var(--terracotta)" },
+  medium: { rank: 1, color: "var(--ochre)" },
+  low: { rank: 2, color: "var(--forest)" },
+};
+
+function parseDate(s: string) {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
 
 const chipStyle: React.CSSProperties = {
   fontSize: "0.8rem",
@@ -55,6 +76,7 @@ export default function DashboardPage() {
   const { name } = useProfile();
   const displayName = name || "Nurse";
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
   const [newTask, setNewTask] = useState("");
   const [timePart, setTimePart] = useState("Welcome back");
@@ -84,6 +106,10 @@ export default function DashboardPage() {
         .select("*")
         .order("created_at", { ascending: true });
       setTasks((data as Task[]) ?? []);
+      const { data: asg } = await supabase
+        .from("assignments")
+        .select("id,title,course,due_date,priority,status");
+      setAssignments((asg as Assignment[]) ?? []);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -112,6 +138,29 @@ export default function DashboardPage() {
   const doneCount = tasks.filter((t) => t.done).length;
   const total = tasks.length;
   const percent = total ? Math.round((doneCount / total) * 100) : 0;
+
+  // Assignments
+  const today0 = (() => { const t = new Date(); t.setHours(0, 0, 0, 0); return t.getTime(); })();
+  const daysUntil = (dueDate: string) => Math.ceil((parseDate(dueDate).getTime() - today0) / 86400000);
+  const dueLabel = (a: Assignment) => {
+    if (!a.due_date) return "";
+    const d = daysUntil(a.due_date);
+    if (d < 0) return "Overdue";
+    if (d === 0) return "Today";
+    return `${d}d`;
+  };
+  const active = assignments.filter((a) => a.status !== "completed");
+  const topAssignments = [...active].sort((a, b) => {
+    const pr = PRI[a.priority].rank - PRI[b.priority].rank;
+    if (pr !== 0) return pr;
+    const ad = a.due_date ? parseDate(a.due_date).getTime() : Infinity;
+    const bd = b.due_date ? parseDate(b.due_date).getTime() : Infinity;
+    return ad - bd;
+  }).slice(0, 3);
+  const dueSoon = active.filter((a) => a.due_date && daysUntil(a.due_date) <= 7);
+  const soonest = active
+    .filter((a) => a.due_date)
+    .sort((a, b) => parseDate(a.due_date!).getTime() - parseDate(b.due_date!).getTime())[0];
 
   return (
     <div className="page active">
@@ -165,8 +214,10 @@ export default function DashboardPage() {
         </div>
         <div className="stat-card">
           <div className="stat-label">Assignment Due Soon</div>
-          <div className="stat-val">1</div>
-          <div className="stat-sub">Case Study — 2 days</div>
+          <div className="stat-val">{dueSoon.length}</div>
+          <div className="stat-sub">
+            {dueSoon.length > 0 && soonest ? `${soonest.title} — ${dueLabel(soonest)}` : "Nothing due soon"}
+          </div>
         </div>
       </div>
 
@@ -261,32 +312,32 @@ export default function DashboardPage() {
       <div className="dash-grid">
         <div className="card">
           <div className="card-title" style={cardTitleStyle}>
-            <CalendarClock size={18} /> Upcoming Assignments
+            <CalendarClock size={18} /> Assignments
           </div>
-          <div className="data-item">
-            <Dot color="var(--terracotta)" />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: "0.85rem", fontWeight: 500 }}>Nursing Case Study</div>
-              <div style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>Fundamentals of Nursing</div>
+          {topAssignments.length ? (
+            topAssignments.map((a) => {
+              const overdue = !!a.due_date && daysUntil(a.due_date) < 0;
+              return (
+                <div className="data-item" key={a.id}>
+                  <Dot color={PRI[a.priority].color} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: "0.85rem", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.title}</div>
+                    <div style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>{a.course}</div>
+                  </div>
+                  <span style={{ fontSize: "0.75rem", color: overdue ? "var(--terracotta)" : "var(--text-muted)", whiteSpace: "nowrap" }}>{dueLabel(a)}</span>
+                </div>
+              );
+            })
+          ) : (
+            <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", textAlign: "center", padding: "1rem", fontStyle: "italic" }}>
+              No active assignments.
             </div>
-            <span className="priority-high">2 days</span>
-          </div>
-          <div className="data-item">
-            <Dot color="var(--ochre)" />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: "0.85rem", fontWeight: 500 }}>Pharmacology Drug Chart</div>
-              <div style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>Pharmacology</div>
-            </div>
-            <span className="priority-med">5 days</span>
-          </div>
-          <div className="data-item">
-            <Dot color="var(--forest)" />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: "0.85rem", fontWeight: 500 }}>Lab Report — Blood Analysis</div>
-              <div style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>Clinical Lab Sciences</div>
-            </div>
-            <span className="priority-low">12 days</span>
-          </div>
+          )}
+          {active.length > 3 && (
+            <Link href="/assignments" style={{ display: "inline-block", marginTop: "0.6rem", fontSize: "0.8rem", color: "var(--terracotta)" }}>
+              View all ({assignments.length}) →
+            </Link>
+          )}
         </div>
 
         <div className="card">
