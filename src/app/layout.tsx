@@ -9,6 +9,7 @@ import "@/styles/legacy/responsive.css";
 import { AppShell } from "@/components/app-shell";
 import { ThemeInit } from "@/components/theme-init";
 import { ProfileProvider } from "@/components/profile-provider";
+import { ToastProvider } from "@/components/toast-provider";
 
 // Body sans — rounded, friendly, readable. Populates --font-sans (the default body font).
 const nunito = Nunito({
@@ -44,9 +45,11 @@ export default function RootLayout({
     >
       <body className="mode-light font-sans">
         <ThemeInit />
-        <ProfileProvider>
-          <AppShell>{children}</AppShell>
-        </ProfileProvider>
+        <ToastProvider>
+          <ProfileProvider>
+            <AppShell>{children}</AppShell>
+          </ProfileProvider>
+        </ToastProvider>
       </body>
     </html>
   );
