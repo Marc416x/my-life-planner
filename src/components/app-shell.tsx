@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Menu, X, LogOut, Leaf, Sprout } from "lucide-react";
 import { navSections } from "@/lib/nav";
 import { createClient } from "@/lib/supabase/client";
+import { useProfile } from "@/components/profile-provider";
 
 // Faithful reproduction of the original prototype's sidebar + layout, using the
 // original CSS classes. Adds a proper mobile drawer (the part that was buggy)
@@ -14,6 +15,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+  const { name, initials } = useProfile();
   const close = () => setOpen(false);
 
   // Auth routes render without the app chrome (sidebar/topbar).
@@ -49,7 +51,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Mobile hamburger — hidden on desktop */}
       <button
         type="button"
-        className="md:hidden"
+        className="md:hidden inline-flex items-center justify-center"
         onClick={() => setOpen(true)}
         aria-label="Open menu"
         style={{
@@ -57,9 +59,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           top: "0.75rem",
           left: "0.75rem",
           zIndex: 97,
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
           width: "40px",
           height: "40px",
           borderRadius: "10px",
@@ -94,7 +93,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <button
             type="button"
-            className="md:hidden"
+            className="md:hidden inline-flex items-center justify-center"
             onClick={close}
             aria-label="Close menu"
             style={{
@@ -102,20 +101,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               border: "none",
               cursor: "pointer",
               color: "var(--text-muted)",
-              display: "inline-flex",
             }}
           >
             <X size={20} />
           </button>
         </div>
 
-        <div className="user-card" style={{ cursor: "pointer" }} title="Edit Profile">
+        <Link href="/settings" onClick={close} className="user-card" style={{ cursor: "pointer", textDecoration: "none", color: "inherit" }} title="Edit Profile">
           <div className="user-avatar" id="sidebar-avatar">
-            SN
+            {initials || "?"}
           </div>
           <div className="user-info">
             <div className="user-name" id="sidebar-name">
-              Student
+              {name || "Student"}
             </div>
             <div
               className="level-badge"
@@ -124,7 +122,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Sprout size={11} /> Beginner
             </div>
           </div>
-        </div>
+        </Link>
 
         <div className="streak-mini">
           <div className="streak-mini-label">Study Streak</div>

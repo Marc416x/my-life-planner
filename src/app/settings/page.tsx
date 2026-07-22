@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MODES, MODE_LABELS, applyMode, getStoredMode, type Mode } from "@/lib/theme";
 import { Sun, SunMedium, Moon, User, type LucideIcon } from "lucide-react";
+import { useProfile } from "@/components/profile-provider";
 
 const MODE_ICONS: Record<Mode, LucideIcon> = {
   "mode-light": Sun,
@@ -13,6 +14,7 @@ const MODE_ICONS: Record<Mode, LucideIcon> = {
 
 export default function SettingsPage() {
   const supabase = createClient();
+  const { refresh } = useProfile();
   const [userId, setUserId] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -36,6 +38,7 @@ export default function SettingsPage() {
   async function saveProfile() {
     if (!userId) return;
     await supabase.from("profiles").update({ name: name.trim() || "Student" }).eq("id", userId);
+    await refresh();
     setSavedMsg("Saved!");
     setTimeout(() => setSavedMsg(""), 1500);
   }

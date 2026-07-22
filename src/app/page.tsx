@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useProfile } from "@/components/profile-provider";
 
 type Task = { id: string; text: string; tag: string | null; tag_class: string | null; done: boolean };
 
@@ -51,17 +52,19 @@ function Dot({ color }: { color: string }) {
 
 export default function DashboardPage() {
   const supabase = createClient();
+  const { name } = useProfile();
+  const displayName = name || "Nurse";
   const [tasks, setTasks] = useState<Task[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
   const [newTask, setNewTask] = useState("");
-  const [greeting, setGreeting] = useState("Welcome back, Nurse!");
+  const [timePart, setTimePart] = useState("Welcome back");
   const [dateLabel, setDateLabel] = useState("");
 
   useEffect(() => {
     const now = new Date();
     const h = now.getHours();
     const g = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
-    setGreeting(`${g}, Nurse!`);
+    setTimePart(g);
     const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     const months = [
       "January", "February", "March", "April", "May", "June",
@@ -114,7 +117,7 @@ export default function DashboardPage() {
     <div className="page active">
       {/* Greeting */}
       <div className="greeting-banner">
-        <h2>{greeting}</h2>
+        <h2>{timePart}, {displayName}!</h2>
         <p>{dateLabel}</p>
         <div style={{ display: "flex", gap: "1rem", marginTop: "0.75rem", flexWrap: "wrap" }}>
           <div style={chipStyle}>
