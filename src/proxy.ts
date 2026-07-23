@@ -9,6 +9,10 @@ export function proxy(request: NextRequest) {
 export const config = {
   // Run on everything except Next internals and static assets.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    // Exclude Next internals, static assets, the service worker + manifest
+    // (the SW is re-fetched for updates and the manifest loads on the public
+    // login page for PWA install), and the reminder cron — it authenticates
+    // with CRON_SECRET, not a session, so it must not be bounced to /login.
+    "/((?!_next/static|_next/image|favicon.ico|sw.js|manifest.webmanifest|api/cron|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
