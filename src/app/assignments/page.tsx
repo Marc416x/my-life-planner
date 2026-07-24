@@ -21,7 +21,6 @@ type Assignment = {
   description: string | null;
 };
 
-const COURSES = ["Pharmacology", "Fundamentals", "Clinical Lab", "Anatomy"];
 const TYPES = ["Essay", "Case Study", "Lab Report", "Presentation", "Homework"];
 const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -64,6 +63,7 @@ export default function AssignmentsPage() {
   const supabase = createClient();
   const toast = useToast();
   const [items, setItems] = useState<Assignment[]>([]);
+  const [courseNames, setCourseNames] = useState<string[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("all");
@@ -73,7 +73,7 @@ export default function AssignmentsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formError, setFormError] = useState("");
   const [fTitle, setFTitle] = useState("");
-  const [fCourse, setFCourse] = useState(COURSES[0]);
+  const [fCourse, setFCourse] = useState("");
   const [fDue, setFDue] = useState("");
   const [fTime, setFTime] = useState("23:59");
   const [fType, setFType] = useState(TYPES[0]);
@@ -87,8 +87,12 @@ export default function AssignmentsPage() {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUserId(user?.id ?? null);
-      const { data } = await supabase.from("assignments").select("*");
+      const [{ data }, { data: courseRows }] = await Promise.all([
+        supabase.from("assignments").select("*"),
+        supabase.from("courses").select("name").order("created_at", { ascending: true }),
+      ]);
       setItems((data as Assignment[]) ?? []);
+      setCourseNames(((courseRows as { name: string }[]) ?? []).map((c) => c.name).filter(Boolean));
       setLoading(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -127,7 +131,7 @@ export default function AssignmentsPage() {
     setEditingId(null);
     setFormError("");
     setFTitle("");
-    setFCourse(COURSES[0]);
+    setFCourse(courseNames[0] ?? "");
     setFDue("");
     setFTime("23:59");
     setFType(TYPES[0]);
@@ -142,7 +146,7 @@ export default function AssignmentsPage() {
     setFormError("");
     setEditingId(a.id);
     setFTitle(a.title);
-    setFCourse(a.course ?? COURSES[0]);
+    setFCourse(a.course ?? courseNames[0] ?? "");
     setFDue(a.due_date ?? "");
     setFTime(a.due_time ?? "23:59");
     setFType(a.type ?? TYPES[0]);
@@ -160,7 +164,7 @@ export default function AssignmentsPage() {
     setFormError("");
     const payload = {
       title: fTitle.trim(),
-      course: fCourse,
+      course: fCourse || null,
       due_date: fDue || null,
       due_time: fTime || null,
       type: fType,
@@ -331,7 +335,17 @@ export default function AssignmentsPage() {
           <h3>{editingId ? "Edit Assignment" : "Add Assignment"}</h3>
           <div className="input-row">
             <div className="field-group"><div className="field-label">Course</div>
-              <select className="field-select" value={fCourse} onChange={(e) => setFCourse(e.target.value)}>{COURSES.map((c) => <option key={c}>{c}</option>)}</select>
+              {courseNames.length === 0 && !fCourse ? (
+                <div className="field-input" style={{ color: "var(--text-muted)", fontStyle: "italic", display: "flex", alignItems: "center" }}>
+                  No courses yet — add one on the Courses page.
+                </div>
+              ) : (
+                <select className="field-select" value={fCourse} onChange={(e) => setFCourse(e.target.value)}>
+                  {/* Keep an already-saved course selectable even if it's no longer in the list. */}
+                  {fCourse && !courseNames.includes(fCourse) && <option key={fCourse}>{fCourse}</option>}
+                  {courseNames.map((c) => <option key={c}>{c}</option>)}
+                </select>
+              )}
             </div>
             <div className="field-group"><div className="field-label">Title</div>
               <input className="field-input" value={fTitle} onChange={(e) => { setFTitle(e.target.value); if (formError) setFormError(""); }} placeholder="Assignment title" />
