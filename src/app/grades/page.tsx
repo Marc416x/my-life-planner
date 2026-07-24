@@ -63,14 +63,28 @@ function rollupGrade(list: Assessment[]): number | null {
   return Math.round(g * 10) / 10;
 }
 
-// Mastery scores are a separate, quiz-derived feature (placeholder for now).
-const mastery = [
-  { course: "Pharmacology", topic: "Drug Classes & Mechanisms", meta: "8 quizzes · updated 2d ago", score: "78%", cls: "grade-B" },
-  { course: "Pharmacology", topic: "Pharmacokinetics", meta: "4 quizzes · updated 6d ago", score: "64%", cls: "grade-C" },
-  { course: "Fundamentals of Nursing", topic: "Patient Assessment", meta: "6 quizzes · updated 1d ago", score: "90%", cls: "grade-A" },
-  { course: "Anatomy & Physiology", topic: "Nervous System", meta: "Stale — no attempt in 14+ days", score: "58%", cls: "" },
-  { course: "Clinical Lab Sciences", topic: "Dosage Calculations", meta: "1 quiz · not enough data", score: "—", cls: "" },
-];
+// A scored practice attempt, exploded per topic from a quiz row.
+type QuizRow = {
+  course_id: string;
+  topics: string | null;
+  score: number | null;
+  max_score: number | null;
+  taken_on: string | null;
+  created_at: string | null;
+};
+
+// Mastery weights recent attempts more heavily: an attempt's influence halves
+// every HALF_LIFE_DAYS. A topic needs >=3 attempts to be "trusted"; if its most
+// recent attempt is >14 days old it's flagged stale.
+const HALF_LIFE_DAYS = 30;
+const MASTERY_MIN_ATTEMPTS = 3;
+const STALE_DAYS = 14;
+
+function recencyLabel(days: number) {
+  if (days <= 0) return "today";
+  if (days === 1) return "1d ago";
+  return `${days}d ago`;
+}
 
 export default function GradesPage() {
   const supabase = createClient();
@@ -78,8 +92,12 @@ export default function GradesPage() {
 
   const [courses, setCourses] = useState<Course[]>([]);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
+  const [quizzes, setQuizzes] = useState<QuizRow[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // Reference "now" for mastery recency, captured at load (kept out of render to
+  // stay pure). Fine as a fixed point — the page reloads to refresh it.
+  const [now, setNow] = useState(0);
 
   // Add-grade form state.
   const [formOpen, setFormOpen] = useState(false);
@@ -95,14 +113,17 @@ export default function GradesPage() {
 
   useEffect(() => {
     (async () => {
+      setNow(Date.now());
       const { data: { user } } = await supabase.auth.getUser();
       setUserId(user?.id ?? null);
-      const [{ data: courseRows }, { data: assessRows }] = await Promise.all([
+      const [{ data: courseRows }, { data: assessRows }, { data: quizRows }] = await Promise.all([
         supabase.from("courses").select("id, name, code, credits, semester, grade_pct, weight_pct").order("created_at", { ascending: true }),
         supabase.from("assessments").select("id, course_id, name, type, score, max_score, weight_pct").order("created_at", { ascending: true }),
+        supabase.from("quizzes").select("course_id, topics, score, max_score, taken_on, created_at").order("created_at", { ascending: false }),
       ]);
       setCourses((courseRows as Course[]) ?? []);
       setAssessments((assessRows as Assessment[]) ?? []);
+      setQuizzes((quizRows as QuizRow[]) ?? []);
       if (courseRows && courseRows.length) setFCourse((courseRows[0] as Course).id);
       setLoading(false);
     })();
@@ -134,6 +155,49 @@ export default function GradesPage() {
   })();
 
   const courseName = (id: string) => courses.find((c) => c.id === id)?.name ?? "—";
+
+  // Topic-level mastery, aggregated from real quiz rows. Each quiz is exploded
+  // across its comma-separated topics (a topic-less quiz falls under "General"),
+  // then per (course, topic) we take a recency-weighted average of the attempt
+  // percentages so recent practice dominates the score.
+  const masteryRows = (() => {
+    type Att = { pct: number; ageDays: number };
+    const buckets = new Map<string, { course_id: string; topic: string; atts: Att[] }>();
+    for (const q of quizzes) {
+      if (q.score == null || q.max_score == null || !((q.max_score as number) > 0)) continue;
+      const pct = ((q.score as number) / (q.max_score as number)) * 100;
+      const dateStr = q.taken_on ?? (q.created_at ? q.created_at.slice(0, 10) : null);
+      const t = dateStr ? new Date(dateStr + "T00:00:00").getTime() : now;
+      const ageDays = Math.max(0, (now - t) / 86400000);
+      const topics = (q.topics ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+      for (const topic of topics.length ? topics : ["General"]) {
+        const key = q.course_id + "||" + topic.toLowerCase();
+        let b = buckets.get(key);
+        if (!b) { b = { course_id: q.course_id, topic, atts: [] }; buckets.set(key, b); }
+        b.atts.push({ pct, ageDays });
+      }
+    }
+    const rows = [...buckets.values()].map((b) => {
+      let wsum = 0;
+      let wpct = 0;
+      let minAge = Infinity;
+      for (const a of b.atts) {
+        const w = Math.pow(0.5, a.ageDays / HALF_LIFE_DAYS);
+        wsum += w;
+        wpct += w * a.pct;
+        if (a.ageDays < minAge) minAge = a.ageDays;
+      }
+      const score = wsum ? Math.round(wpct / wsum) : 0;
+      const lastDays = Math.round(minAge);
+      const attempts = b.atts.length;
+      const status: "active" | "stale" | "insufficient" =
+        attempts < MASTERY_MIN_ATTEMPTS ? "insufficient" : lastDays > STALE_DAYS ? "stale" : "active";
+      return { key: b.course_id + "||" + b.topic, course: courseName(b.course_id), topic: b.topic, attempts, score, lastDays, status };
+    });
+    const order = { active: 0, stale: 1, insufficient: 2 };
+    rows.sort((a, b) => order[a.status] - order[b.status] || b.score - a.score);
+    return rows;
+  })();
 
   async function addGrade() {
     if (!userId) return;
@@ -302,15 +366,35 @@ export default function GradesPage() {
           <span style={{ fontSize: "0.6rem", background: "var(--ochre-light)", color: "#7A5A10", padding: "2px 8px", borderRadius: 10 }}>Separate from GPA</span>
         </div>
         <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginBottom: "1rem", fontStyle: "italic" }}>
-          Built from your quiz &amp; assignment results in the Quizzes tab — a live read on how well you&apos;re actually retaining each topic, independent of what&apos;s on your transcript. Recent attempts count more than old ones.
+          Built from your quiz results in the Quizzes tab — a live read on how well you&apos;re actually retaining each topic, independent of what&apos;s on your transcript. Recent attempts count more than old ones.
         </div>
-        {mastery.map((m, i) => (
-          <div className="grade-row" key={i}>
-            <div className="grade-name"><strong>{m.course}</strong> · {m.topic}</div>
-            <div className="grade-weight" style={{ width: "auto", fontSize: "0.68rem" }}>{m.meta}</div>
-            <div className={"grade-score " + m.cls} style={m.cls ? undefined : { color: "var(--text-muted)" }}>{m.score}</div>
+        {loading ? (
+          <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", padding: "1rem", fontStyle: "italic", textAlign: "center" }}>Loading…</div>
+        ) : masteryRows.length === 0 ? (
+          <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", padding: "1rem", fontStyle: "italic", textAlign: "center" }}>
+            No quiz results yet — record quizzes in the Quizzes tab and your topic mastery will show up here.
           </div>
-        ))}
+        ) : (
+          masteryRows.map((m) => {
+            const dot = m.status === "active" ? "var(--forest)" : m.status === "stale" ? "var(--ochre)" : "var(--text-muted)";
+            const meta = m.status === "insufficient"
+              ? `${m.attempts} quiz${m.attempts === 1 ? "" : "zes"} · not enough data`
+              : m.status === "stale"
+                ? `Stale — last attempt ${recencyLabel(m.lastDays)}`
+                : `${m.attempts} quizzes · updated ${recencyLabel(m.lastDays)}`;
+            const cls = m.status === "active" ? gradeClass(m.score) : "";
+            return (
+              <div className="grade-row" key={m.key}>
+                <div className="grade-name" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: dot, display: "inline-block", flexShrink: 0 }} />
+                  <span><strong>{m.course}</strong> · {m.topic}</span>
+                </div>
+                <div className="grade-weight" style={{ width: "auto", fontSize: "0.68rem" }}>{meta}</div>
+                <div className={"grade-score " + cls} style={cls ? undefined : { color: "var(--text-muted)" }}>{m.score}%</div>
+              </div>
+            );
+          })
+        )}
         <div style={{ marginTop: "0.85rem", paddingTop: "0.75rem", borderTop: "1px dashed var(--border)", fontSize: "0.72rem", color: "var(--text-muted)", display: "flex", gap: "1rem", flexWrap: "wrap" }}>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--forest)", display: "inline-block" }} /> Active — regularly reviewed</span>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--ochre)", display: "inline-block" }} /> Stale — 14+ days since last attempt</span>
