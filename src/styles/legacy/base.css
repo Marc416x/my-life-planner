@@ -1293,6 +1293,254 @@ body.theme-neutral .btn-primary { border-radius: 8px; }
   font-weight: 500;
 }
 
+/* ---- CLINICAL SESSION CARD (compact, clickable → opens detail) ---- */
+button.clinical-card {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+button.clinical-card:hover { border-color: var(--forest); box-shadow: 0 3px 12px rgba(0, 0, 0, 0.07); }
+button.clinical-card:active { transform: scale(0.995); }
+button.clinical-card:focus-visible { outline: 2px solid var(--forest); outline-offset: 2px; }
+
+.clinical-card-main { flex: 1; min-width: 0; }
+.clinical-meta { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
+.clinical-goal {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-top: 0.35rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.clinical-notes-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-top: 0.4rem;
+}
+.clinical-aside {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+.clinical-diff { font-size: 0.68rem; font-weight: 500; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+.clinical-chevron { color: var(--text-muted); flex-shrink: 0; }
+
+/* ---- SESSION DETAIL: backdrop shared by dialog (desktop) + sheet (mobile) ---- */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(20, 12, 6, 0.45);
+  opacity: calc(1 - var(--drawer-swipe-progress, 0));
+  transition: opacity 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.dark .sheet-backdrop { background: rgba(0, 0, 0, 0.6); }
+.sheet-backdrop[data-starting-style],
+.sheet-backdrop[data-ending-style] { opacity: 0; }
+.sheet-backdrop[data-swiping] { transition-duration: 0ms; }
+
+/* Desktop: centered dialog */
+.detail-dialog {
+  position: fixed;
+  z-index: 201;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(540px, calc(100vw - 2rem));
+  max-height: min(85vh, 720px);
+  overflow-y: auto;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--forest);
+  border-radius: 14px;
+  padding: 1.5rem;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  outline: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.detail-dialog[data-starting-style],
+.detail-dialog[data-ending-style] {
+  opacity: 0;
+  transform: translate(-50%, -48%) scale(0.96);
+}
+
+/* Mobile: bottom sheet with snap points (Base UI Drawer — swipe + snap).
+   The popup is (near) full-height and pushed DOWN by --drawer-snap-point-offset;
+   a fixed drag-area header stays visible while the body scrolls inside. */
+.sheet-viewport {
+  --bleed: 3rem;
+  position: fixed;
+  inset: 0;
+  z-index: 201;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  touch-action: none;
+}
+.sheet-viewport::after {
+  content: "";
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  height: var(--bleed);
+  background: var(--bg-card);
+  pointer-events: none;
+}
+.sheet-viewport[data-closed]::after { opacity: 0; }
+
+.detail-sheet {
+  --top-margin: 1rem;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: calc(100dvh - var(--top-margin));
+  padding-bottom: max(0px, calc(var(--drawer-snap-point-offset) + var(--drawer-swipe-movement-y)));
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border-top: 3px solid var(--forest);
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.22);
+  outline: none;
+  overflow: visible;
+  touch-action: none;
+  transition:
+    transform 0.45s cubic-bezier(0.32, 0.72, 0, 1),
+    box-shadow 0.45s cubic-bezier(0.32, 0.72, 0, 1);
+  transform: translateY(calc(var(--drawer-snap-point-offset) + var(--drawer-swipe-movement-y)));
+  will-change: transform;
+}
+.detail-sheet::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 100%;
+  height: var(--bleed);
+  background: inherit;
+  pointer-events: none;
+}
+.detail-sheet[data-starting-style],
+.detail-sheet[data-ending-style] {
+  transform: translateY(calc(100% + 2px));
+  padding-bottom: 0;
+}
+.detail-sheet[data-swiping] { transition-duration: 0ms; }
+
+.sheet-drag {
+  flex-shrink: 0;
+  padding: 0.75rem 1.25rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+  border-radius: 18px 18px 0 0;
+  touch-action: none;
+  user-select: none;
+}
+.sheet-drag .sheet-title { text-align: center; font-size: 1.35rem; margin: 0; }
+.sheet-grabber {
+  width: 2.5rem;
+  height: 0.28rem;
+  border-radius: 3px;
+  background: var(--text-muted);
+  opacity: 0.35;
+  margin: 0 auto 0.6rem;
+  flex-shrink: 0;
+}
+.sheet-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  max-width: 32rem;
+  margin: 0 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: auto;
+  padding: 1rem 1.25rem calc(1.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* ---- SESSION DETAIL: shared body ---- */
+.sheet-title {
+  font-family: var(--font-caveat), cursive;
+  font-size: 1.5rem;
+  line-height: 1.15;
+  color: var(--text-primary);
+  margin: 0 0 0.3rem;
+}
+.sheet-sub {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.75rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-bottom: 0.6rem;
+}
+.sheet-sub span { display: inline-flex; align-items: center; gap: 4px; }
+.sheet-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 12px;
+  margin-bottom: 1.1rem;
+}
+.sheet-section { margin-bottom: 1.1rem; }
+.sheet-section-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 0.3rem;
+}
+.sheet-section-body {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.sheet-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+.sheet-actions .sheet-action-spacer { margin-left: auto; }
+.btn-danger {
+  background: none;
+  border: 1px solid var(--terracotta);
+  color: var(--terracotta-dark);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.btn-danger:hover { background: var(--terracotta-light); }
+
 /* LONG TERM VISION */
 .vision-section { margin-bottom: 1.5rem; }
 .vision-title {
