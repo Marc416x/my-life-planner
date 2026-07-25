@@ -2,11 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Target, PenLine, Plus, Pencil, Trash2, ChevronRight, FileText, StickyNote, Calendar } from "lucide-react";
-import { Dialog } from "@base-ui/react/dialog";
-import { Drawer } from "@base-ui/react/drawer";
-import { useMediaQuery } from "@base-ui/react/unstable-use-media-query";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/toast-provider";
+import { DetailSheet } from "@/components/detail-sheet";
 
 type ClinicalSession = {
   id: string;
@@ -27,10 +25,6 @@ const CLIN_COLS =
 const DIFFICULTIES = ["Easy", "Medium", "Hard", "Very Hard"];
 const DIFF_NUM: Record<string, number> = { Easy: 1, Medium: 2, Hard: 3, "Very Hard": 4 };
 const DIFF_SHORT = ["Easy", "Med", "Hard", "V.Hard"];
-
-// Bottom-sheet snap heights (fractions of the viewport): opens at the lower one,
-// drag up to the taller. Both are well under full-screen.
-const SNAP_POINTS: (number | string)[] = [0.5, 0.85];
 
 type IconType = React.ComponentType<{ size?: number | string }>;
 
@@ -117,7 +111,6 @@ function DetailContent({
 export default function ClinicalsPage() {
   const supabase = createClient();
   const toast = useToast();
-  const isMobile = useMediaQuery("(max-width: 640px)", { defaultMatches: false, noSsr: true });
 
   const [sessions, setSessions] = useState<ClinicalSession[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
@@ -127,7 +120,6 @@ export default function ClinicalsPage() {
   // set through the close animation so the body stays rendered while it exits.
   const [detail, setDetail] = useState<ClinicalSession | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
-  const [snap, setSnap] = useState<number | string | null>(SNAP_POINTS[0]);
 
   // Add / edit form state.
   const [formOpen, setFormOpen] = useState(false);
@@ -188,7 +180,6 @@ export default function ClinicalsPage() {
 
   function openDetail(s: ClinicalSession) {
     setDetail(s);
-    setSnap(SNAP_POINTS[0]); // always open at the lower snap height
     setDetailOpen(true);
   }
 
@@ -414,34 +405,9 @@ export default function ClinicalsPage() {
       </div>
 
       {/* SESSION DETAIL — centered dialog on desktop, snap-point bottom sheet on mobile */}
-      {isMobile ? (
-        <Drawer.Root open={detailOpen} onOpenChange={setDetailOpen} snapPoints={SNAP_POINTS} snapPoint={snap} onSnapPointChange={(sp) => setSnap(sp)}>
-          <Drawer.Portal>
-            <Drawer.Backdrop className="sheet-backdrop" />
-            <Drawer.Viewport className="sheet-viewport">
-              <Drawer.Popup className="detail-sheet">
-                <div className="sheet-drag">
-                  <div className="sheet-grabber" />
-                  <Drawer.Title className="sheet-title">{detail?.department || "Clinical Session"}</Drawer.Title>
-                </div>
-                <Drawer.Content className="sheet-scroll">
-                  {detail && <DetailContent session={detail} onEdit={editFromDetail} onDelete={deleteFromDetail} onClose={() => setDetailOpen(false)} />}
-                </Drawer.Content>
-              </Drawer.Popup>
-            </Drawer.Viewport>
-          </Drawer.Portal>
-        </Drawer.Root>
-      ) : (
-        <Dialog.Root open={detailOpen} onOpenChange={setDetailOpen}>
-          <Dialog.Portal>
-            <Dialog.Backdrop className="sheet-backdrop" />
-            <Dialog.Popup className="detail-dialog">
-              <Dialog.Title className="sheet-title">{detail?.department || "Clinical Session"}</Dialog.Title>
-              {detail && <DetailContent session={detail} onEdit={editFromDetail} onDelete={deleteFromDetail} onClose={() => setDetailOpen(false)} />}
-            </Dialog.Popup>
-          </Dialog.Portal>
-        </Dialog.Root>
-      )}
+      <DetailSheet open={detailOpen} onOpenChange={setDetailOpen} title={detail?.department || "Clinical Session"}>
+        {detail && <DetailContent session={detail} onEdit={editFromDetail} onDelete={deleteFromDetail} onClose={() => setDetailOpen(false)} />}
+      </DetailSheet>
     </div>
   );
 }

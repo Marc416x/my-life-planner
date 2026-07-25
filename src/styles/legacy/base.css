@@ -1761,6 +1761,112 @@ button.clinical-card:focus-visible { outline: 2px solid var(--forest); outline-o
 .sch-lab { background: rgba(196, 154, 58, 0.2); color: #7A5A10; border-left: 2px solid var(--ochre); }
 .sch-study { background: rgba(107, 124, 74, 0.15); color: var(--olive-dark); border-left: 2px solid var(--olive); }
 
+/* ---- CLASS SCHEDULE: weekly time grid (desktop) ---- *
+   Blocks are positioned by start time and sized by duration; overlapping
+   classes split the column into lanes. See src/app/schedule/page.tsx. */
+.tt {
+  display: grid;
+  grid-template-columns: 54px repeat(var(--tt-days, 7), minmax(0, 1fr));
+  border-top: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--bg-card);
+}
+.tt-corner,
+.tt-dayhead {
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 0.5rem 0.25rem;
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.tt-gutter {
+  position: relative;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.tt-hourlabel {
+  position: absolute;
+  right: 6px;
+  transform: translateY(-50%);
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.tt-col {
+  position: relative;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.tt-event {
+  position: absolute;
+  border-radius: 5px;
+  padding: 3px 5px;
+  overflow: hidden;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  line-height: 1.2;
+  transition: filter 0.12s ease;
+}
+.tt-event:hover { filter: brightness(0.96); }
+.tt-event:focus-visible { outline: 2px solid var(--forest); outline-offset: 1px; }
+.tt-event-subject { font-size: 0.66rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.tt-event-time { font-size: 0.6rem; opacity: 0.75; }
+
+/* Grid on wide screens, day-agenda on phones — toggled by CSS (not JS) so
+   there's no hydration flip or first-paint flash. */
+.sched-mobile { display: none; }
+@media (max-width: 640px) {
+  .sched-desktop { display: none; }
+  .sched-mobile { display: block; }
+}
+
+/* ---- CLASS SCHEDULE: day agenda (mobile) ---- */
+.agenda-tabs {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.5rem;
+  -webkit-overflow-scrolling: touch;
+}
+.agenda-tab {
+  flex-shrink: 0;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.agenda-tab.active { background: var(--forest); color: #fff; border-color: var(--forest); }
+.agenda-day-total { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.75rem; }
+.agenda-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.7rem 0.85rem;
+  margin-bottom: 0.6rem;
+}
+.agenda-item:active { transform: scale(0.995); }
+.agenda-time { font-size: 0.7rem; color: var(--text-muted); min-width: 4.6rem; line-height: 1.35; }
+.agenda-subject { font-size: 0.9rem; font-weight: 600; color: var(--text-primary); }
+.agenda-type { font-size: 0.68rem; color: var(--text-muted); margin-top: 2px; }
+
 /* RESOURCE HUB */
 .resource-grid {
   display: grid;
