@@ -305,7 +305,7 @@ export default function GradesPage() {
           aria-expanded={formOpen}
           style={{ background: "none", border: "none", cursor: "pointer", padding: 0, width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem", color: "inherit", textAlign: "left" }}
         >
-          <span style={{ display: "flex", alignItems: "center", gap: "0.45rem", fontWeight: 600, fontSize: "1.05rem" }}>
+          <span style={{ display: "flex", alignItems: "center", gap: "0.45rem", fontFamily: "var(--font-caveat), cursive", fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)" }}>
             {formOpen ? <BookOpen size={18} /> : <Plus size={18} />} Add Course Grade Entry
           </span>
           <ChevronDown size={18} style={{ transition: "transform 0.15s", transform: formOpen ? "rotate(180deg)" : "none", color: "var(--text-muted)" }} />
