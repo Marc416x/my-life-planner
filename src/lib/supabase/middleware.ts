@@ -45,5 +45,27 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // First-run gate: signed-in users who haven't finished setup go to /onboarding
+  // (and finished users can't sit on it). One lightweight PK lookup per request.
+  if (user && !isPublic) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("onboarded")
+      .eq("id", user.id)
+      .single();
+    const onboarded = profile?.onboarded === true;
+    const onOnboarding = pathname.startsWith("/onboarding");
+    if (!onboarded && !onOnboarding) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/onboarding";
+      return NextResponse.redirect(url);
+    }
+    if (onboarded && onOnboarding) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/";
+      return NextResponse.redirect(url);
+    }
+  }
+
   return supabaseResponse;
 }

@@ -18,8 +18,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { name, initials } = useProfile();
   const close = () => setOpen(false);
 
-  // Auth routes render without the app chrome (sidebar/topbar).
-  if (pathname.startsWith("/login") || pathname.startsWith("/auth")) {
+  // Auth + first-run setup render without the app chrome (sidebar/topbar).
+  if (
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/onboarding")
+  ) {
     return <>{children}</>;
   }
 

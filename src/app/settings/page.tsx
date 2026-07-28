@@ -3,16 +3,22 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MODES, MODE_LABELS, applyMode, getStoredMode, type Mode } from "@/lib/theme";
-import { Sun, SunMedium, Moon, User, Bell, type LucideIcon } from "lucide-react";
+import { Sun, Moon, User, Bell, type LucideIcon } from "lucide-react";
 import { useProfile } from "@/components/profile-provider";
 import {
-  pushSupported,
   permissionState,
   currentEndpoint,
   subscribeToPush,
   unsubscribeFromPush,
   sendTestPush,
 } from "@/lib/push-client";
+import {
+  DEFAULT_PROFILE_FIELDS,
+  loadProfileFields,
+  saveProfileFields,
+  type ProfileFields,
+} from "@/lib/profile";
+import { NameField, YearField, StyleField, GoalsFields, TimezoneField } from "@/components/profile-fields";
 
 type PushState = "loading" | "unsupported" | "off" | "on" | "blocked";
 
@@ -28,7 +34,6 @@ const REMINDER_KINDS: { key: keyof Prefs; label: string; desc: string }[] = [
 
 const MODE_ICONS: Record<Mode, LucideIcon> = {
   "mode-light": Sun,
-  "mode-white": SunMedium,
   "mode-dark": Moon,
 };
 
@@ -37,7 +42,7 @@ export default function SettingsPage() {
   const { refresh } = useProfile();
   const [userId, setUserId] = useState<string | null>(null);
   const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
+  const [fields, setFields] = useState<ProfileFields>(DEFAULT_PROFILE_FIELDS);
   const [savedMsg, setSavedMsg] = useState("");
   const [mode, setMode] = useState<Mode>("mode-light");
 
@@ -48,14 +53,15 @@ export default function SettingsPage() {
   const [prefsBusy, setPrefsBusy] = useState(false);
 
   useEffect(() => {
+    // One-time read of the per-device colour mode from localStorage on mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMode(getStoredMode());
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUserId(user?.id ?? null);
       setEmail(user?.email ?? "");
       if (user) {
-        const { data } = await supabase.from("profiles").select("name").eq("id", user.id).single();
-        if (data?.name) setName(data.name);
+        setFields(await loadProfileFields(supabase, user.id));
         await loadPrefs(user.id);
       }
     })();
@@ -144,9 +150,17 @@ export default function SettingsPage() {
     }
   }
 
+  const updateField = <K extends keyof ProfileFields>(key: K, value: ProfileFields[K]) =>
+    setFields((f) => ({ ...f, [key]: value }));
+
   async function saveProfile() {
     if (!userId) return;
-    await supabase.from("profiles").update({ name: name.trim() || "Student" }).eq("id", userId);
+    const { error } = await saveProfileFields(supabase, userId, fields);
+    if (error) {
+      setSavedMsg("Couldn't save — try again.");
+      setTimeout(() => setSavedMsg(""), 2500);
+      return;
+    }
     await refresh();
     setSavedMsg("Saved!");
     setTimeout(() => setSavedMsg(""), 1500);
@@ -168,17 +182,29 @@ export default function SettingsPage() {
         <h3 style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
           <User size={18} /> Profile
         </h3>
-        <div className="input-row">
-          <div className="field-group">
-            <div className="field-label">Display Name</div>
-            <input className="field-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
-          </div>
-          <div className="field-group">
-            <div className="field-label">Email</div>
-            <input className="field-input" value={email} disabled style={{ opacity: 0.7 }} />
+        <div className="pf-row">
+          <NameField value={fields.name} onChange={(v) => updateField("name", v)} />
+          <div className="pf-field">
+            <label className="pf-label">Email</label>
+            <input className="pf-input" value={email} disabled style={{ opacity: 0.7 }} />
           </div>
         </div>
-        <button className="btn-add" onClick={saveProfile}>Save Profile</button>
+        <div className="pf-row" style={{ marginTop: "0.9rem" }}>
+          <YearField value={fields.year} onChange={(v) => updateField("year", v)} />
+          <TimezoneField value={fields.timezone} onChange={(v) => updateField("timezone", v)} />
+        </div>
+        <div style={{ marginTop: "1.1rem" }}>
+          <div className="field-label" style={{ marginBottom: "0.5rem" }}>Style</div>
+          <StyleField value={fields.style} onChange={(v) => updateField("style", v)} />
+          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.5rem" }}>
+            Rolls out across the app in an upcoming update — for now this saves your preference.
+          </div>
+        </div>
+        <div style={{ marginTop: "1.1rem" }}>
+          <div className="field-label" style={{ marginBottom: "0.5rem" }}>Goals</div>
+          <GoalsFields values={fields} onChange={(k, v) => updateField(k, v)} />
+        </div>
+        <button className="btn-add" onClick={saveProfile} style={{ marginTop: "1.2rem" }}>Save Profile</button>
         {savedMsg && <span style={{ marginLeft: "0.75rem", color: "var(--olive)", fontSize: "0.82rem" }}>{savedMsg}</span>}
       </div>
 

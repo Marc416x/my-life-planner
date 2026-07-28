@@ -1,0 +1,240 @@
+/* ============================================================
+   MyLifePlanner — onboarding.css
+   Two things live here:
+   1. The STYLE token system (Soft / Bold / Balanced) — a set of --s-* tokens
+      controlling SHAPE & TYPE only (never colour; colour is the light/dark mode,
+      accent hues are a later palette pass). Applying .style-* to any element
+      restyles its subtree, so the same tokens can drive main pages later.
+   2. The first-run setup wizard (.ob-*) + shared profile fields (.pf-*), both
+      of which consume the --s-* tokens so they wear the chosen style.
+   ============================================================ */
+
+/* ---- Style tokens: balanced is the default so anything renders un-classed ---- */
+:root {
+  --s-radius: 16px;
+  --s-radius-sm: 10px;
+  --s-btn-radius: 10px;
+  --s-shadow: 0 8px 26px rgba(90, 60, 35, 0.13);
+  --s-border-w: 1px;
+  --s-pad: 1.6rem;
+  --s-gap: 0.95rem;
+  --s-head-font: var(--font-caveat), cursive;
+  --s-head-weight: 700;
+  --s-head-spacing: 0;
+}
+.style-balanced {
+  --s-radius: 16px; --s-radius-sm: 10px; --s-btn-radius: 10px;
+  --s-shadow: 0 8px 26px rgba(90, 60, 35, 0.13);
+  --s-border-w: 1px; --s-pad: 1.6rem; --s-gap: 0.95rem;
+  --s-head-font: var(--font-caveat), cursive; --s-head-weight: 700; --s-head-spacing: 0;
+}
+.style-soft {
+  --s-radius: 26px; --s-radius-sm: 18px; --s-btn-radius: 999px;
+  --s-shadow: 0 16px 46px rgba(90, 60, 35, 0.17);
+  --s-border-w: 1px; --s-pad: 1.9rem; --s-gap: 1.2rem;
+  --s-head-font: var(--font-caveat), cursive; --s-head-weight: 700; --s-head-spacing: 0;
+}
+.style-bold {
+  --s-radius: 4px; --s-radius-sm: 3px; --s-btn-radius: 3px;
+  --s-shadow: 0 4px 0 rgba(45, 30, 20, 0.16), 0 12px 26px rgba(45, 30, 20, 0.10);
+  --s-border-w: 2px; --s-pad: 1.35rem; --s-gap: 0.7rem;
+  --s-head-font: var(--font-sans), sans-serif; --s-head-weight: 800; --s-head-spacing: -0.02em;
+}
+
+/* ---- Wizard shell ---- */
+.ob-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+/* Branded backdrop — the same warm terracotta hero as the login left panel
+   (ochre + forest glows/blobs over a terracotta gradient). Shared with the
+   password-reset page (.auth-center, defined in auth.css, overridden here since
+   onboarding.css loads later). Dark mode just lays a warm-dark tint on top via
+   the --ob-darken variable. */
+.ob-page,
+.auth-center {
+  --ob-darken: transparent;
+  background:
+    linear-gradient(0deg, var(--ob-darken), var(--ob-darken)),
+    radial-gradient(230px 230px at 88% 12%, rgba(231, 193, 90, 0.55), transparent 70%),
+    radial-gradient(210px 210px at 10% 92%, rgba(62, 124, 85, 0.55), transparent 70%),
+    radial-gradient(120% 90% at 12% 8%, rgba(196, 154, 58, 0.50), transparent 55%),
+    radial-gradient(140% 120% at 100% 100%, rgba(45, 90, 61, 0.72), transparent 60%),
+    linear-gradient(158deg, #8B4A2F 0%, #B15E3C 42%, #A0624A 80%);
+}
+body.mode-dark .ob-page,
+body.mode-dark .auth-center {
+  --ob-darken: rgba(18, 10, 4, 0.34);
+}
+.ob-card {
+  width: 100%;
+  max-width: 560px;
+  background: var(--bg-card);
+  border: var(--s-border-w) solid var(--border);
+  border-radius: var(--s-radius);
+  box-shadow: var(--s-shadow);
+  padding: var(--s-pad);
+  transition: border-radius 0.25s ease, box-shadow 0.25s ease, padding 0.25s ease, border-width 0.25s ease;
+}
+/* Per-style flourishes that amplify personality */
+.style-bold.ob-card, .style-bold .ob-card { border-left: 5px solid var(--terracotta); }
+.style-soft.ob-card, .style-soft .ob-card { border-color: transparent; }
+
+.ob-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-caveat), cursive;
+  font-weight: 700;
+  font-size: 1.7rem;
+  color: var(--terracotta);
+  line-height: 1;
+}
+.ob-logo-wrap { text-align: center; }
+
+/* Step indicator */
+.ob-steps { display: flex; gap: 8px; justify-content: center; margin: 1.1rem 0 1.4rem; }
+.ob-dot { width: 8px; height: 8px; border-radius: 999px; background: var(--border-strong); transition: all 0.25s ease; }
+.ob-dot.active { background: var(--terracotta); width: 26px; }
+.ob-dot.done { background: var(--olive); }
+
+.ob-title {
+  font-family: var(--s-head-font);
+  font-weight: var(--s-head-weight);
+  letter-spacing: var(--s-head-spacing);
+  font-size: 2rem;
+  line-height: 1.08;
+  color: var(--text-primary);
+  margin: 0 0 0.25rem;
+  text-wrap: balance;
+}
+.style-bold .ob-title, .style-bold.ob-card .ob-title { font-size: 1.5rem; }
+.ob-sub { color: var(--text-muted); font-size: 0.92rem; margin: 0 0 1.3rem; line-height: 1.5; }
+
+.ob-body { display: flex; flex-direction: column; gap: var(--s-gap); }
+
+/* Wizard nav */
+.ob-nav { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; margin-top: 1.6rem; }
+.ob-nav .spacer { flex: 1; }
+
+/* ---- Buttons (shape follows the style) ---- */
+.ob-btn {
+  font-family: var(--font-sans), sans-serif;
+  font-weight: 800;
+  font-size: 0.95rem;
+  border-radius: var(--s-btn-radius);
+  padding: 0.75rem 1.4rem;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  transition: transform 0.12s ease, background 0.18s ease, border-radius 0.25s ease, opacity 0.18s;
+}
+.ob-btn:disabled { opacity: 0.55; cursor: default; }
+.ob-btn-primary { background: var(--terracotta); color: #fff; box-shadow: 0 4px 14px color-mix(in srgb, var(--terracotta) 38%, transparent); }
+.ob-btn-primary:not(:disabled):hover { background: var(--terracotta-dark); transform: translateY(-1px); }
+.ob-btn-ghost { background: transparent; color: var(--text-secondary); border-color: var(--border-strong); }
+.ob-btn-ghost:not(:disabled):hover { background: var(--bg-main); }
+
+/* ---- Shared profile fields (.pf-*) — used by wizard AND settings ---- */
+.pf-field { display: flex; flex-direction: column; gap: 0.4rem; }
+.pf-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-secondary); }
+.pf-input, .pf-select {
+  width: 100%;
+  font-family: var(--font-sans), sans-serif;
+  font-size: 0.92rem;
+  color: var(--text-primary);
+  background: var(--bg-main);
+  border: 1.5px solid var(--border-strong);
+  border-radius: var(--s-radius-sm);
+  padding: 0.65rem 0.85rem;
+  outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s, border-radius 0.25s ease;
+}
+.pf-input:focus, .pf-select:focus { border-color: var(--terracotta); box-shadow: 0 0 0 3px color-mix(in srgb, var(--terracotta) 20%, transparent); }
+.pf-hint { font-size: 0.74rem; color: var(--text-muted); }
+.pf-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem; }
+@media (max-width: 520px) { .pf-row { grid-template-columns: 1fr; } }
+
+/* Stepper (goals) */
+.pf-stepper { display: inline-flex; align-items: center; gap: 0.5rem; }
+.pf-step-btn {
+  width: 34px; height: 34px; flex: none;
+  border: 1.5px solid var(--border-strong);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border-radius: var(--s-radius-sm);
+  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: border-color 0.15s, color 0.15s, background 0.15s, border-radius 0.25s ease;
+}
+.pf-step-btn:hover { border-color: var(--terracotta); color: var(--terracotta); }
+/* Fixed-width value+unit cell so the −, number and + line up across every row;
+   unit sits just to the left of the + button. */
+.pf-step-amount { display: grid; grid-template-columns: 1.9rem auto; align-items: baseline; column-gap: 0.35rem; width: 6rem; }
+.pf-step-val { text-align: right; font-weight: 800; font-size: 1.05rem; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.pf-step-unit { text-align: left; font-size: 0.78rem; color: var(--text-muted); }
+.pf-goal-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.pf-goal-row .pf-label { text-transform: none; font-size: 0.92rem; font-weight: 600; letter-spacing: 0; color: var(--text-primary); }
+
+/* ---- Style picker: each card previews its OWN style ---- */
+.pf-style-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
+.pf-style-card {
+  border: 1.5px solid var(--border-strong);
+  border-radius: 14px;
+  padding: 1rem 0.85rem;
+  background: var(--bg-main);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
+}
+.pf-style-card:hover { border-color: var(--terracotta); }
+.pf-style-card.selected { border-color: var(--terracotta); background: var(--terracotta-light); box-shadow: var(--shadow); }
+.pf-style-card.selected .pf-style-name { color: var(--terracotta-dark); }
+
+/* the little live sample inside each card (reads that card's own --s-* tokens) */
+.pf-demo { display: flex; flex-direction: column; align-items: center; gap: 7px; margin-bottom: 0.7rem; }
+.pf-demo-box {
+  width: 100%; max-width: 108px; padding: 9px;
+  background: var(--bg-card);
+  border: var(--s-border-w) solid var(--border-strong);
+  border-radius: var(--s-radius);
+  display: flex; flex-direction: column; gap: 5px; align-items: stretch;
+}
+.style-bold .pf-demo-box { border-left-width: 3px; border-left-color: var(--terracotta); }
+.pf-demo-line { height: 5px; border-radius: 3px; background: var(--border-strong); }
+.pf-demo-line.short { width: 60%; }
+.pf-demo-btn { height: 15px; border-radius: var(--s-btn-radius); background: var(--terracotta); margin-top: 2px; }
+.pf-style-name { font-family: var(--s-head-font); font-weight: var(--s-head-weight); letter-spacing: var(--s-head-spacing); font-size: 1.15rem; color: var(--text-primary); line-height: 1; }
+.style-bold .pf-style-name { font-size: 0.98rem; }
+.pf-style-tag { display: block; font-size: 0.72rem; color: var(--text-muted); margin-top: 3px; }
+
+/* ---- Summary (final step) ---- */
+.ob-summary { background: var(--terracotta-light); border: 1px solid color-mix(in srgb, var(--terracotta) 22%, transparent); border-radius: var(--s-radius-sm); padding: 0.85rem 1.05rem; }
+.ob-summary dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 0.3rem 1rem; }
+.ob-summary dt { font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.ob-summary dd { margin: 0; font-size: 0.88rem; color: var(--text-primary); font-weight: 600; text-align: right; }
+.ob-quote { margin-top: 0.8rem; padding: 0.55rem 0.85rem; background: color-mix(in srgb, var(--olive-light) 65%, transparent); border-radius: var(--s-radius-sm); font-style: italic; font-size: 0.8rem; color: var(--olive-dark); text-align: center; }
+
+.ob-alert { font-size: 0.82rem; color: var(--terracotta-dark); background: color-mix(in srgb, var(--terracotta) 12%, transparent); border: 1px solid color-mix(in srgb, var(--terracotta) 26%, transparent); border-radius: 9px; padding: 0.55rem 0.75rem; }
+
+/* Phones: keep the style tiles small and in one row (minimalist, no taglines). */
+@media (max-width: 520px) {
+  .pf-style-grid { grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; }
+  .pf-style-card { padding: 0.7rem 0.4rem; }
+  .pf-demo { margin-bottom: 0.5rem; }
+  .pf-demo-box { max-width: 100%; padding: 6px; gap: 4px; }
+  .pf-demo-line { height: 4px; }
+  .pf-demo-btn { height: 11px; }
+  .pf-style-name { font-size: 0.92rem; }
+  .style-bold .pf-style-name { font-size: 0.82rem; }
+  .pf-style-tag { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ob-card, .ob-btn, .ob-dot, .pf-input, .pf-select, .pf-step-btn { transition: none; }
+}

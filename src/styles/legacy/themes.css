@@ -8,40 +8,6 @@ body.mode-light {
   /* inherits all --bg-main etc from JS applyPalette — no overrides needed */
 }
 
-/* ===== WHITE (CLEAN) MODE ===== */
-body.mode-white {
-  --bg-main: #F7F8FA !important;
-  --bg-card: #FFFFFF !important;
-  --bg-sidebar: #F0F1F4 !important;
-  --text-primary: #1A1A1A !important;
-  --text-secondary: #444444 !important;
-  --text-muted: #888888 !important;
-  --border: rgba(0,0,0,0.08) !important;
-  --border-strong: rgba(0,0,0,0.16) !important;
-  --shadow: 0 2px 12px rgba(0,0,0,0.06) !important;
-  --shadow-md: 0 4px 20px rgba(0,0,0,0.10) !important;
-  --p1-light: #F5EEE8 !important;
-  --p2-light: #EEF2E8 !important;
-  --p3-light: #F5F0E0 !important;
-  --p4-light: #E8F0EC !important;
-  --terracotta-light: #F5EEE8 !important;
-  --terracotta-dark: #8B4A2F !important;
-  --olive-light: #EEF2E8 !important;
-  --olive-dark: #3D4A25 !important;
-  --ochre-light: #F5F0E0 !important;
-  --forest-light: #E8F0EC !important;
-}
-body.mode-white .form-section,
-body.mode-white .stat-card,
-body.mode-white .card { background: #FFFFFF !important; }
-body.mode-white .field-input,
-body.mode-white .field-select,
-body.mode-white .field-textarea,
-body.mode-white .drug-field-input,
-body.mode-white .drug-field-textarea { background: #F2F3F5 !important; border-color: rgba(0,0,0,0.13) !important; color: #1A1A1A !important; }
-body.mode-white .greeting-banner { background: linear-gradient(135deg, #F5EEE8, #F5F0E0) !important; }
-body.mode-white .streak-mini { background: #F5F0E0 !important; border-color: rgba(196,154,58,0.2) !important; }
-
 /* ===== DARK MODE ===== */
 body.mode-dark {
   --bg-main: #111110 !important;
