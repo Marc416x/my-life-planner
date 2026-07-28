@@ -71,80 +71,59 @@
   --color-forest-light: #d5e8dc;
 }
 
-/* ---------------------- LIGHT (Earthy Boho) ----------------------- */
+/* ------------------------------------------------------------------ *
+ * shadcn / Tailwind semantic tokens — the names shadcn-style components
+ * (components/ui/*) and Tailwind's `bg-*`/`text-*` utilities read.
+ *
+ * These are NOT a second palette. They DERIVE from the legacy tokens
+ * (base.css / themes.css), so there is a single source of truth and they
+ * follow the app's real colour mode (body.mode-dark) automatically —
+ * change colours in base.css / themes.css only, never here.
+ *
+ * (Note: the app toggles `body.mode-dark`, not the `.dark` class, so no
+ * separate dark block is needed — the legacy sources already flip.)
+ * ------------------------------------------------------------------ */
 :root {
-  --radius: 0.625rem;
+  --radius: 0.625rem; /* base.css overrides to 16px; kept as the @theme-scale fallback */
 
-  --background: #faf6ef;
-  --foreground: #2d1f14;
-  --card: #fffcf7;
-  --card-foreground: #2d1f14;
-  --popover: #fffcf7;
-  --popover-foreground: #2d1f14;
-  --primary: #c4704a;
-  --primary-foreground: #fffcf7;
-  --secondary: #f0e8dc;
-  --secondary-foreground: #5a3e2b;
-  --muted: #f0e8dc;
-  --muted-foreground: #8b6b4a;
-  --accent: #f2e0d5;
-  --accent-foreground: #8b4a2f;
+  --background: var(--bg-main);
+  --foreground: var(--text-primary);
+  --card: var(--bg-card);
+  --card-foreground: var(--text-primary);
+  --popover: var(--bg-card);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--terracotta);
+  --primary-foreground: var(--warm-white);
+  --secondary: var(--bg-sidebar);
+  --secondary-foreground: var(--text-secondary);
+  --muted: var(--bg-sidebar);
+  --muted-foreground: var(--text-muted);
+  --accent: var(--terracotta-light);
+  --accent-foreground: var(--terracotta-dark);
   --destructive: #a03038;
-  --border: rgba(180, 120, 80, 0.22);
-  --input: rgba(180, 120, 80, 0.25);
-  --ring: #c4704a;
+  --input: var(--border-strong);
+  --ring: var(--terracotta);
+  /* --border is owned by base.css (same variable name); left to it. */
 
-  --chart-1: #c4704a;
-  --chart-2: #6b7c4a;
-  --chart-3: #c49a3a;
-  --chart-4: #2d5a3d;
-  --chart-5: #a0624a;
+  --chart-1: var(--p1);
+  --chart-2: var(--p2);
+  --chart-3: var(--p3);
+  --chart-4: var(--p4);
+  --chart-5: var(--p5);
 
-  --sidebar: #f5efe4;
-  --sidebar-foreground: #2d1f14;
-  --sidebar-primary: #c4704a;
-  --sidebar-primary-foreground: #fffcf7;
-  --sidebar-accent: #f2e0d5;
-  --sidebar-accent-foreground: #8b4a2f;
-  --sidebar-border: rgba(180, 120, 80, 0.22);
-  --sidebar-ring: #c4704a;
+  --sidebar: var(--bg-sidebar);
+  --sidebar-foreground: var(--text-primary);
+  --sidebar-primary: var(--terracotta);
+  --sidebar-primary-foreground: var(--warm-white);
+  --sidebar-accent: var(--terracotta-light);
+  --sidebar-accent-foreground: var(--terracotta-dark);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--terracotta);
 }
 
-/* ----------------------- DARK (Earthy Boho) ----------------------- */
-.dark {
-  --background: #17110b;
-  --foreground: #f2e8dc;
-  --card: #221a11;
-  --card-foreground: #f2e8dc;
-  --popover: #221a11;
-  --popover-foreground: #f2e8dc;
-  --primary: #d98a63;
-  --primary-foreground: #17110b;
-  --secondary: #2c2216;
-  --secondary-foreground: #f2e8dc;
-  --muted: #2c2216;
-  --muted-foreground: #b39b82;
-  --accent: #3a2a1c;
-  --accent-foreground: #f2e0d5;
+/* The one value with no legacy source: restate the danger red for dark. */
+body.mode-dark {
   --destructive: #d04858;
-  --border: rgba(200, 150, 100, 0.16);
-  --input: rgba(200, 150, 100, 0.2);
-  --ring: #d98a63;
-
-  --chart-1: #d98a63;
-  --chart-2: #9dae72;
-  --chart-3: #d9b45c;
-  --chart-4: #5a9a6a;
-  --chart-5: #c0906e;
-
-  --sidebar: #1e1710;
-  --sidebar-foreground: #f2e8dc;
-  --sidebar-primary: #d98a63;
-  --sidebar-primary-foreground: #17110b;
-  --sidebar-accent: #3a2a1c;
-  --sidebar-accent-foreground: #f2e0d5;
-  --sidebar-border: rgba(200, 150, 100, 0.16);
-  --sidebar-ring: #d98a63;
 }
 
 @layer base {

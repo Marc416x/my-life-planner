@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { AlarmClock, Plus, Pencil, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/toast-provider";
+import { useCollapsibleForm } from "@/lib/use-collapsible-form";
+import { PageHeader, Card, Section, Field, Input, Select, Button, EmptyState } from "@/components/kit";
 
 type Course = { id: string; name: string; code: string | null };
 
@@ -80,8 +82,8 @@ export default function ExamsPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Add / edit form state.
-  const [formOpen, setFormOpen] = useState(false);
+  // Add / edit form state. Open/close + auto-scroll handled by the shared hook.
+  const { open: formOpen, formRef, openForm, closeForm: collapseForm, scrollFormIntoView } = useCollapsibleForm();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [fCourse, setFCourse] = useState("");
   const [fName, setFName] = useState("");
@@ -93,10 +95,6 @@ export default function ExamsPage() {
   const [formError, setFormError] = useState("");
 
   const pending = useRef<Map<string, { item: Exam; timeout: number }>>(new Map());
-  const formRef = useRef<HTMLDivElement>(null);
-  const prevScrollY = useRef(0);
-  const didToggle = useRef(false);
-  const scrollAfterAdd = useRef(false);
 
   useEffect(() => {
     (async () => {
@@ -114,29 +112,6 @@ export default function ExamsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Expand → scroll the form into view. Collapse → scroll back to where the
-  // "Add Exam" / edit button was when it was clicked.
-  useEffect(() => {
-    if (formOpen) {
-      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    } else if (didToggle.current) {
-      window.scrollTo({ top: prevScrollY.current, behavior: "smooth" });
-    }
-  }, [formOpen]);
-
-  // After adding to the (above-the-form) list, the form gets pushed down —
-  // pull it back into view so you stay on it for the next entry.
-  useEffect(() => {
-    if (scrollAfterAdd.current) {
-      scrollAfterAdd.current = false;
-      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }, [exams]);
-
-  function scrollToForm() {
-    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
   function resetFields() {
     setFName("");
     setFDate("");
@@ -148,12 +123,10 @@ export default function ExamsPage() {
   }
 
   function openAdd() {
-    prevScrollY.current = window.scrollY;
-    didToggle.current = true;
     setEditingId(null);
     setFormError("");
     resetFields();
-    setFormOpen(true);
+    openForm();
   }
 
   function openEdit(e: Exam) {
@@ -166,20 +139,14 @@ export default function ExamsPage() {
     setFSessions(e.planned_sessions != null ? String(e.planned_sessions) : "");
     setFConfidence(e.confidence ?? 3);
     setFTopics(e.topics ?? "");
-    if (!formOpen) {
-      prevScrollY.current = window.scrollY;
-      didToggle.current = true;
-      setFormOpen(true); // effect scrolls it into view
-    } else {
-      scrollToForm(); // already open — bring it into view now
-    }
+    if (!formOpen) openForm(); // effect scrolls it into view
+    else scrollFormIntoView(); // already open — bring it into view now
   }
 
   function closeForm() {
-    didToggle.current = true;
     setEditingId(null);
     setFormError("");
-    setFormOpen(false);
+    collapseForm();
   }
 
   async function submit() {
@@ -214,7 +181,7 @@ export default function ExamsPage() {
       setFWeight("");
       setFSessions("");
       setFTopics("");
-      scrollAfterAdd.current = true;
+      scrollFormIntoView();
     }
   }
 
@@ -241,109 +208,119 @@ export default function ExamsPage() {
 
   return (
     <div className="page active">
-      <div className="page-header">
-        <h1>Exams</h1>
-        <p>Prepare strategically, perform confidently</p>
-      </div>
+      <PageHeader
+        icon={<AlarmClock size={22} />}
+        title="Exams"
+        subtitle="Prepare strategically, perform confidently"
+        actions={!formOpen ? (
+          <Button className="k-desktop-only" onClick={openAdd}>
+            <Plus size={16} /> Add Exam
+          </Button>
+        ) : undefined}
+      />
 
-      {/* UPCOMING EXAMS — before the form */}
-      <div className="card-title" style={{ marginBottom: "1rem", fontFamily: "var(--font-caveat), cursive", fontSize: "1.1rem", color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "0.45rem" }}>
-        <AlarmClock size={18} /> Upcoming Exams
-      </div>
-
-      {loading ? (
-        <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", padding: "1rem", fontStyle: "italic", textAlign: "center" }}>Loading…</div>
-      ) : exams.length === 0 ? (
-        <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", padding: "2rem 1rem", fontStyle: "italic", textAlign: "center" }}>
-          No exams scheduled yet — add your first one below to start the countdown.
-        </div>
-      ) : (
-        exams.map((e) => {
-          const course = courses.find((c) => c.id === e.course_id);
-          const days = e.exam_date ? daysUntil(e.exam_date) : null;
-          const badge = countdownStyle(days);
-          let numText: string | number = "—";
-          let labelText = "No date";
-          if (days != null) {
-            if (days < 0) { numText = Math.abs(days); labelText = Math.abs(days) === 1 ? "day ago" : "days ago"; }
-            else if (days === 0) { numText = 0; labelText = "Today"; }
-            else { numText = days; labelText = days === 1 ? "day left" : "days left"; }
-          }
-          const meta = [
-            course?.code,
-            e.weight_pct != null ? `Weight: ${e.weight_pct}%` : null,
-            e.planned_sessions != null ? `${e.planned_sessions} session${e.planned_sessions === 1 ? "" : "s"} planned` : null,
-          ].filter(Boolean).join(" · ");
-          const conf = e.confidence ?? 0;
-          return (
-            <div className="exam-card" key={e.id}>
-              <div className="exam-countdown" style={{ background: badge.bg }}>
-                <div className="countdown-num" style={{ color: badge.color }}>{numText}</div>
-                <div className="countdown-label">{labelText}</div>
-              </div>
-              <div className="exam-info">
-                <div className="exam-name">{course?.name ? `${course.name} ` : ""}{e.name}</div>
-                {meta && <div className="exam-course">{meta}</div>}
-                {e.topics && <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: 2 }}>Topics: {e.topics}</div>}
-                {conf > 0 && <ConfDots filled={conf} />}
-              </div>
-              <div style={{ display: "flex", alignItems: "flex-start", gap: "0.6rem" }}>
-                {conf > 0 && (
-                  <div style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>Confidence</div>
-                    <div style={{ fontFamily: "var(--font-caveat), cursive", fontSize: "1.2rem", color: confColor(conf) }}>{conf}/5</div>
+      {/* UPCOMING EXAMS */}
+      <Section title={<span style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem" }}><AlarmClock size={18} /> Upcoming Exams</span>}>
+        {loading ? (
+          <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", padding: "1rem", fontStyle: "italic", textAlign: "center" }}>Loading…</div>
+        ) : exams.length === 0 ? (
+          <Card>
+            <EmptyState
+              icon={<AlarmClock size={26} />}
+              title="No exams scheduled yet"
+              description="Add your first exam to start the countdown and plan your study sessions."
+            />
+          </Card>
+        ) : (
+          exams.map((e) => {
+            const course = courses.find((c) => c.id === e.course_id);
+            const days = e.exam_date ? daysUntil(e.exam_date) : null;
+            const badge = countdownStyle(days);
+            let numText: string | number = "—";
+            let labelText = "No date";
+            if (days != null) {
+              if (days < 0) { numText = Math.abs(days); labelText = Math.abs(days) === 1 ? "day ago" : "days ago"; }
+              else if (days === 0) { numText = 0; labelText = "Today"; }
+              else { numText = days; labelText = days === 1 ? "day left" : "days left"; }
+            }
+            const meta = [
+              course?.code,
+              e.weight_pct != null ? `Weight: ${e.weight_pct}%` : null,
+              e.planned_sessions != null ? `${e.planned_sessions} session${e.planned_sessions === 1 ? "" : "s"} planned` : null,
+            ].filter(Boolean).join(" · ");
+            const conf = e.confidence ?? 0;
+            return (
+              <div className="exam-card" key={e.id}>
+                <div className="exam-countdown" style={{ background: badge.bg }}>
+                  <div className="countdown-num" style={{ color: badge.color }}>{numText}</div>
+                  <div className="countdown-label">{labelText}</div>
+                </div>
+                <div className="exam-info">
+                  <div className="exam-name">{course?.name ? `${course.name} ` : ""}{e.name}</div>
+                  {meta && <div className="exam-course">{meta}</div>}
+                  {e.topics && <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: 2 }}>Topics: {e.topics}</div>}
+                  {conf > 0 && <ConfDots filled={conf} />}
+                </div>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: "0.6rem" }}>
+                  {conf > 0 && (
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>Confidence</div>
+                      <div style={{ fontFamily: "var(--font-caveat), cursive", fontSize: "1.2rem", color: confColor(conf) }}>{conf}/5</div>
+                    </div>
+                  )}
+                  <div style={{ display: "flex", gap: "0.3rem" }}>
+                    <button onClick={() => openEdit(e)} aria-label="Edit exam" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "inline-flex", padding: 2 }}><Pencil size={15} /></button>
+                    <button onClick={() => requestDelete(e)} aria-label="Delete exam" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "inline-flex", padding: 2 }}><Trash2 size={15} /></button>
                   </div>
-                )}
-                <div style={{ display: "flex", gap: "0.3rem" }}>
-                  <button onClick={() => openEdit(e)} aria-label="Edit exam" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "inline-flex", padding: 2 }}><Pencil size={15} /></button>
-                  <button onClick={() => requestDelete(e)} aria-label="Delete exam" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "inline-flex", padding: 2 }}><Trash2 size={15} /></button>
                 </div>
               </div>
-            </div>
-          );
-        })
+            );
+          })
+        )}
+      </Section>
+
+      {/* Mobile: the "New" action sits at the bottom-left of the list. */}
+      {!formOpen && (
+        <div className="k-mobile-only k-mobile-add">
+          <Button onClick={openAdd}><Plus size={16} /> Add Exam</Button>
+        </div>
       )}
 
-      {/* ADD / EDIT EXAM — a plain button when collapsed, the full form when expanded */}
-      <div style={{ marginTop: "1.25rem" }}>
-        {!formOpen && (
-          <button className="btn-add" onClick={openAdd} style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
-            <Plus size={16} /> Add Exam
-          </button>
-        )}
-
-        {formOpen && (
-          <div className="form-section" ref={formRef} style={{ scrollMarginTop: "1rem", marginBottom: 0 }}>
-            <h3>{editingId ? "Edit Exam" : "Add Exam"}</h3>
-            <div className="input-row three">
-              <div className="field-group"><div className="field-label">Course</div>
-                <select className="field-select" value={fCourse} onChange={(e) => { setFCourse(e.target.value); if (formError) setFormError(""); }}>
+      {/* ADD / EDIT EXAM */}
+      {formOpen && (
+        <div ref={formRef} style={{ scrollMarginTop: "1rem" }}>
+          <Card title={editingId ? "Edit Exam" : "Add Exam"} icon={<AlarmClock size={20} />}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "0.75rem" }}>
+              <Field label="Course" htmlFor="e-course">
+                <Select id="e-course" value={fCourse} onChange={(e) => { setFCourse(e.target.value); if (formError) setFormError(""); }}>
                   {courses.length ? courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>) : <option value="">Add a course first</option>}
-                </select>
-              </div>
-              <div className="field-group"><div className="field-label">Exam Name</div><input className="field-input" value={fName} onChange={(e) => { setFName(e.target.value); if (formError) setFormError(""); }} placeholder="e.g., Mid-Term" /></div>
-              <div className="field-group"><div className="field-label">Exam Date</div><input className="field-input" type="date" value={fDate} onChange={(e) => setFDate(e.target.value)} /></div>
+                </Select>
+              </Field>
+              <Field label="Exam Name" htmlFor="e-name"><Input id="e-name" value={fName} onChange={(e) => { setFName(e.target.value); if (formError) setFormError(""); }} placeholder="e.g., Mid-Term" /></Field>
+              <Field label="Exam Date" htmlFor="e-date"><Input id="e-date" type="date" value={fDate} onChange={(e) => setFDate(e.target.value)} /></Field>
             </div>
-            <div className="input-row three">
-              <div className="field-group"><div className="field-label">Weight %</div><input className="field-input" type="number" min="0" max="100" value={fWeight} onChange={(e) => setFWeight(e.target.value)} placeholder="e.g., 30" /></div>
-              <div className="field-group"><div className="field-label">Planned Sessions</div><input className="field-input" type="number" min="0" value={fSessions} onChange={(e) => setFSessions(e.target.value)} placeholder="5" /></div>
-              <div className="field-group"><div className="field-label">Confidence Level</div>
-                <select className="field-select" value={fConfidence} onChange={(e) => setFConfidence(Number(e.target.value))}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "0.75rem", marginTop: "0.75rem" }}>
+              <Field label="Weight %" htmlFor="e-weight"><Input id="e-weight" type="number" min="0" max="100" value={fWeight} onChange={(e) => setFWeight(e.target.value)} placeholder="e.g., 30" /></Field>
+              <Field label="Planned Sessions" htmlFor="e-sessions"><Input id="e-sessions" type="number" min="0" value={fSessions} onChange={(e) => setFSessions(e.target.value)} placeholder="5" /></Field>
+              <Field label="Confidence Level" htmlFor="e-conf">
+                <Select id="e-conf" value={fConfidence} onChange={(e) => setFConfidence(Number(e.target.value))}>
                   {CONFIDENCE.map((c) => <option key={c.v} value={c.v}>{c.label}</option>)}
-                </select>
-              </div>
+                </Select>
+              </Field>
             </div>
-            <div className="input-row single">
-              <div className="field-group"><div className="field-label">Topics to Cover</div><input className="field-input" value={fTopics} onChange={(e) => setFTopics(e.target.value)} placeholder="Enter topics separated by commas" /></div>
+            <div style={{ marginTop: "0.75rem" }}>
+              <Field label="Topics to Cover" htmlFor="e-topics">
+                <Input id="e-topics" value={fTopics} onChange={(e) => setFTopics(e.target.value)} placeholder="Enter topics separated by commas" />
+              </Field>
             </div>
-            <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
-              <button className="btn-add" onClick={(e) => { e.currentTarget.blur(); submit(); }}>{editingId ? "Save Changes" : "+ Add Exam"}</button>
-              <button className="btn-outline" onClick={closeForm} style={{ padding: "0.5rem 1rem" }}>{editingId ? "Cancel" : "Done"}</button>
+            <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap", marginTop: "1.1rem" }}>
+              <Button onClick={(e) => { e.currentTarget.blur(); submit(); }}>{editingId ? "Save Changes" : "Add Exam"}</Button>
+              <Button variant="outline" onClick={closeForm}>{editingId ? "Cancel" : "Done"}</Button>
               {formError && <span style={{ color: "var(--terracotta-dark)", fontSize: "0.82rem" }}>{formError}</span>}
             </div>
-          </div>
-        )}
-      </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

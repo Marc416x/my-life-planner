@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Pencil, Trash2, Plus, ChevronDown, ChevronRight } from "lucide-react";
+import { Pencil, Trash2, Plus, ChevronDown, ChevronRight, ClipboardList } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/toast-provider";
+import { useCollapsibleForm } from "@/lib/use-collapsible-form";
+import { PageHeader, Card, StatCard, Progress, Field, Input, Select, Textarea, Button, Badge, Tabs, EmptyState } from "@/components/kit";
 
 type Status = "pending" | "in_progress" | "completed";
 type Priority = "high" | "medium" | "low";
@@ -24,10 +26,10 @@ type Assignment = {
 const TYPES = ["Essay", "Case Study", "Lab Report", "Presentation", "Homework"];
 const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-const PRIORITY: Record<Priority, { label: string; cls: string; rank: number }> = {
-  high: { label: "High", cls: "priority-high", rank: 0 },
-  medium: { label: "Medium", cls: "priority-med", rank: 1 },
-  low: { label: "Low", cls: "priority-low", rank: 2 },
+const PRIORITY: Record<Priority, { label: string; tone: "terracotta" | "ochre" | "olive"; rank: number }> = {
+  high: { label: "High", tone: "terracotta", rank: 0 },
+  medium: { label: "Medium", tone: "ochre", rank: 1 },
+  low: { label: "Low", tone: "olive", rank: 2 },
 };
 
 const STATUS: Record<Status, { label: string; bg: string; color: string }> = {
@@ -69,7 +71,7 @@ export default function AssignmentsPage() {
   const [tab, setTab] = useState<Tab>("all");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
-  const [formOpen, setFormOpen] = useState(false);
+  const { open: formOpen, formRef, openForm, closeForm: collapseForm, scrollFormIntoView } = useCollapsibleForm();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formError, setFormError] = useState("");
   const [fTitle, setFTitle] = useState("");
@@ -81,7 +83,6 @@ export default function AssignmentsPage() {
   const [fDesc, setFDesc] = useState("");
 
   const pending = useRef<Map<string, { item: Assignment; timeout: number }>>(new Map());
-  const formRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     (async () => {
@@ -97,11 +98,6 @@ export default function AssignmentsPage() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Auto-scroll the add/edit form into view when it expands.
-  useEffect(() => {
-    if (formOpen) formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [formOpen]);
 
   const today0 = (() => { const t = new Date(); t.setHours(0, 0, 0, 0); return t.getTime(); })();
   const isOverdue = (a: Assignment) =>
@@ -140,7 +136,7 @@ export default function AssignmentsPage() {
   }
   function openAdd() {
     resetForm();
-    setFormOpen(true);
+    openForm();
   }
   function openEdit(a: Assignment) {
     setFormError("");
@@ -152,7 +148,8 @@ export default function AssignmentsPage() {
     setFType(a.type ?? TYPES[0]);
     setFPriority(a.priority);
     setFDesc(a.description ?? "");
-    setFormOpen(true);
+    if (!formOpen) openForm();
+    else scrollFormIntoView();
   }
 
   async function submit() {
@@ -178,7 +175,7 @@ export default function AssignmentsPage() {
       const { data } = await supabase.from("assignments").insert({ user_id: userId, ...payload }).select().single();
       if (data) setItems((xs) => [...xs, data as Assignment]);
     }
-    setFormOpen(false);
+    collapseForm();
     resetForm();
   }
 
@@ -198,7 +195,7 @@ export default function AssignmentsPage() {
   }
 
   function requestDelete(a: Assignment) {
-    if (editingId === a.id) { setFormOpen(false); resetForm(); }
+    if (editingId === a.id) { collapseForm(); resetForm(); }
     setItems((xs) => xs.filter((x) => x.id !== a.id));
     const timeout = window.setTimeout(async () => {
       pending.current.delete(a.id);
@@ -227,48 +224,53 @@ export default function AssignmentsPage() {
 
   return (
     <div className="page active">
-      <div className="page-header">
-        <h1>Assignments</h1>
-        <p>Stay ahead — never miss a deadline</p>
-      </div>
+      <PageHeader
+        icon={<ClipboardList size={22} />}
+        title="Assignments"
+        subtitle="Stay ahead — never miss a deadline"
+        actions={!formOpen ? (
+          <Button className="k-desktop-only" onClick={openAdd}>
+            <Plus size={16} /> New Assignment
+          </Button>
+        ) : undefined}
+      />
 
       {/* Stats */}
-      <div className="stats-grid">
-        <div className="stat-card"><div className="stat-label">Total</div><div className="stat-val">{total}</div></div>
-        <div className="stat-card"><div className="stat-label">In Progress</div><div className="stat-val" style={{ color: "var(--ochre)" }}>{inProgress}</div></div>
-        <div className="stat-card"><div className="stat-label">Completed</div><div className="stat-val" style={{ color: "var(--olive)" }}>{counts.completed}</div></div>
-        <div className="stat-card"><div className="stat-label">Completion Rate</div><div className="stat-val">{rate}%</div><div className="progress-bar"><div className="progress-fill fill-olive" style={{ width: `${rate}%` }} /></div></div>
+      <div className="k-stats-grid" style={{ marginBottom: "1.5rem" }}>
+        <StatCard tone="terracotta" label="Total" value={total} />
+        <StatCard tone="ochre" label="In Progress" value={inProgress} />
+        <StatCard tone="olive" label="Completed" value={counts.completed} />
+        <StatCard tone="forest" label="Completion Rate" value={`${rate}%`}>
+          <Progress value={rate} tone="olive" style={{ marginTop: "0.55rem" }} />
+        </StatCard>
       </div>
 
       {/* Filter tabs */}
-      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem", flexWrap: "wrap" }}>
-        {tabs.map((t) => {
-          const active = tab === t.key;
-          return (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              style={{
-                flex: "none", padding: "0.4rem 1rem", borderRadius: 20, fontSize: "0.78rem", cursor: "pointer",
-                border: "1px solid var(--border)",
-                background: active ? "var(--terracotta)" : "none",
-                color: active ? "white" : "var(--text-muted)",
-              }}
-            >
-              {t.label} ({counts[t.key]})
-            </button>
-          );
-        })}
+      <div style={{ marginBottom: "1rem", overflowX: "auto" }}>
+        <Tabs
+          aria-label="Filter assignments"
+          value={tab}
+          onValueChange={(v) => setTab(v as Tab)}
+          items={tabs.map((t) => ({ value: t.key, label: `${t.label} (${counts[t.key]})` }))}
+        />
       </div>
 
       {/* List */}
-      <div className="card">
+      <Card>
         {loading ? (
           <div style={{ textAlign: "center", color: "var(--text-muted)", padding: "1.5rem", fontStyle: "italic" }}>Loading…</div>
         ) : visible.length === 0 ? (
-          <div style={{ textAlign: "center", color: "var(--text-muted)", padding: "1.5rem", fontStyle: "italic" }}>
-            {total === 0 ? "No assignments yet — add your first one below." : "Nothing in this view."}
-          </div>
+          total === 0 ? (
+            <EmptyState
+              icon={<ClipboardList size={26} />}
+              title="No assignments yet"
+              description="Add your first assignment to start tracking deadlines."
+            />
+          ) : (
+            <div style={{ textAlign: "center", color: "var(--text-muted)", padding: "1.5rem", fontStyle: "italic" }}>
+              Nothing in this view.
+            </div>
+          )
         ) : (
           visible.map((a, i) => {
             const overdue = isOverdue(a);
@@ -300,7 +302,7 @@ export default function AssignmentsPage() {
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
-                    <span className={PRIORITY[a.priority].cls}>{PRIORITY[a.priority].label}</span>
+                    <Badge tone={PRIORITY[a.priority].tone}>{PRIORITY[a.priority].label}</Badge>
                     <button
                       onClick={() => cycleStatus(a)}
                       title="Click to change status"
@@ -322,51 +324,56 @@ export default function AssignmentsPage() {
             );
           })
         )}
-      </div>
+      </Card>
+
+      {/* Mobile: the "New" action sits at the bottom-left of the list. */}
+      {!formOpen && (
+        <div className="k-mobile-only k-mobile-add">
+          <Button onClick={openAdd}><Plus size={16} /> New Assignment</Button>
+        </div>
+      )}
 
       {/* Add / Edit (below the list) */}
-      {!formOpen && (
-        <button className="btn-add" onClick={openAdd} style={{ marginTop: "1rem", display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
-          <Plus size={16} /> New Assignment
-        </button>
-      )}
       {formOpen && (
-        <div className="form-section" ref={formRef} style={{ marginTop: "1rem", scrollMarginTop: "1rem" }}>
-          <h3>{editingId ? "Edit Assignment" : "Add Assignment"}</h3>
-          <div className="input-row">
-            <div className="field-group"><div className="field-label">Course</div>
-              {courseNames.length === 0 && !fCourse ? (
-                <div className="field-input" style={{ color: "var(--text-muted)", fontStyle: "italic", display: "flex", alignItems: "center" }}>
-                  No courses yet — add one on the Courses page.
-                </div>
-              ) : (
-                <select className="field-select" value={fCourse} onChange={(e) => setFCourse(e.target.value)}>
-                  {/* Keep an already-saved course selectable even if it's no longer in the list. */}
-                  {fCourse && !courseNames.includes(fCourse) && <option key={fCourse}>{fCourse}</option>}
-                  {courseNames.map((c) => <option key={c}>{c}</option>)}
-                </select>
-              )}
+        <div ref={formRef} style={{ marginTop: "1.5rem", scrollMarginTop: "1rem" }}>
+          <Card title={editingId ? "Edit Assignment" : "Add Assignment"} icon={<ClipboardList size={20} />}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: "0.75rem" }}>
+              <Field label="Course" htmlFor="a-course">
+                {courseNames.length === 0 && !fCourse ? (
+                  <div className="k-input" style={{ color: "var(--text-muted)", fontStyle: "italic", display: "flex", alignItems: "center" }}>
+                    No courses yet — add one on the Courses page.
+                  </div>
+                ) : (
+                  <Select id="a-course" value={fCourse} onChange={(e) => setFCourse(e.target.value)}>
+                    {/* Keep an already-saved course selectable even if it's no longer in the list. */}
+                    {fCourse && !courseNames.includes(fCourse) && <option key={fCourse}>{fCourse}</option>}
+                    {courseNames.map((c) => <option key={c}>{c}</option>)}
+                  </Select>
+                )}
+              </Field>
+              <Field label="Title" htmlFor="a-title">
+                <Input id="a-title" value={fTitle} onChange={(e) => { setFTitle(e.target.value); if (formError) setFormError(""); }} placeholder="Assignment title" />
+              </Field>
             </div>
-            <div className="field-group"><div className="field-label">Title</div>
-              <input className="field-input" value={fTitle} onChange={(e) => { setFTitle(e.target.value); if (formError) setFormError(""); }} placeholder="Assignment title" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3" style={{ margin: "0.75rem 0" }}>
+              <Field label="Actual Due Date" htmlFor="a-due"><Input id="a-due" type="date" value={fDue} onChange={(e) => setFDue(e.target.value)} /></Field>
+              <Field label="Due Time" htmlFor="a-time"><Input id="a-time" type="time" value={fTime} onChange={(e) => setFTime(e.target.value)} /></Field>
+              <Field label="Type" htmlFor="a-type"><Select id="a-type" value={fType} onChange={(e) => setFType(e.target.value)}>{TYPES.map((t) => <option key={t}>{t}</option>)}</Select></Field>
+              <Field label="Priority" htmlFor="a-priority">
+                <Select id="a-priority" value={fPriority} onChange={(e) => setFPriority(e.target.value as Priority)}>
+                  <option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option>
+                </Select>
+              </Field>
             </div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3" style={{ marginBottom: "0.75rem" }}>
-            <div className="field-group"><div className="field-label">Actual Due Date</div><input className="field-input" type="date" value={fDue} onChange={(e) => setFDue(e.target.value)} /></div>
-            <div className="field-group"><div className="field-label">Due Time</div><input className="field-input" type="time" value={fTime} onChange={(e) => setFTime(e.target.value)} /></div>
-            <div className="field-group"><div className="field-label">Type</div><select className="field-select" value={fType} onChange={(e) => setFType(e.target.value)}>{TYPES.map((t) => <option key={t}>{t}</option>)}</select></div>
-            <div className="field-group"><div className="field-label">Priority</div>
-              <select className="field-select" value={fPriority} onChange={(e) => setFPriority(e.target.value as Priority)}>
-                <option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option>
-              </select>
+            <Field label="Description" htmlFor="a-desc">
+              <Textarea id="a-desc" value={fDesc} onChange={(e) => setFDesc(e.target.value)} placeholder="Assignment details..." />
+            </Field>
+            <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap", marginTop: "1.1rem" }}>
+              <Button onClick={(e) => { e.currentTarget.blur(); submit(); }}>{editingId ? "Save Changes" : "Add Assignment"}</Button>
+              <Button variant="outline" onClick={() => { collapseForm(); resetForm(); }}>Cancel</Button>
+              {formError && <span style={{ color: "var(--terracotta-dark)", fontSize: "0.82rem" }}>{formError}</span>}
             </div>
-          </div>
-          <div className="input-row single"><div className="field-group"><div className="field-label">Description</div><textarea className="field-textarea" value={fDesc} onChange={(e) => setFDesc(e.target.value)} placeholder="Assignment details..." /></div></div>
-          <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
-            <button className="btn-add" onClick={(e) => { e.currentTarget.blur(); submit(); }}>{editingId ? "Save Changes" : "+ Add Assignment"}</button>
-            <button className="btn-outline" onClick={() => { setFormOpen(false); resetForm(); }} style={{ padding: "0.5rem 1rem" }}>Cancel</button>
-            {formError && <span style={{ color: "var(--terracotta-dark)", fontSize: "0.82rem" }}>{formError}</span>}
-          </div>
+          </Card>
         </div>
       )}
     </div>

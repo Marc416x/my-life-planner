@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { Target, PenLine, Plus, Pencil, Trash2, ChevronRight, FileText, StickyNote, Calendar } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/toast-provider";
+import { useCollapsibleForm } from "@/lib/use-collapsible-form";
 import { DetailSheet } from "@/components/detail-sheet";
+import { PageHeader, Card, StatCard, Section, Field, Input, Select, Textarea, Button, EmptyState } from "@/components/kit";
 
 type ClinicalSession = {
   id: string;
@@ -100,9 +102,9 @@ function DetailContent({
       {!hasNotes && <div className="sheet-section-body" style={{ fontStyle: "italic", color: "var(--text-muted)" }}>No notes recorded for this session.</div>}
 
       <div className="sheet-actions">
-        <button className="btn-add" onClick={onEdit} style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}><Pencil size={14} /> Edit</button>
-        <button className="btn-danger" onClick={onDelete}><Trash2 size={14} /> Delete</button>
-        <button className="btn-outline sheet-action-spacer" onClick={onClose} style={{ padding: "0.5rem 1rem" }}>Close</button>
+        <Button size="sm" onClick={onEdit}><Pencil size={14} /> Edit</Button>
+        <Button size="sm" variant="danger" onClick={onDelete}><Trash2 size={14} /> Delete</Button>
+        <Button size="sm" variant="outline" className="sheet-action-spacer" onClick={onClose}>Close</Button>
       </div>
     </>
   );
@@ -121,8 +123,8 @@ export default function ClinicalsPage() {
   const [detail, setDetail] = useState<ClinicalSession | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
-  // Add / edit form state.
-  const [formOpen, setFormOpen] = useState(false);
+  // Add / edit form state. Open/close + auto-scroll handled by the shared hook.
+  const { open: formOpen, formRef, openForm, closeForm: collapseForm, scrollFormIntoView } = useCollapsibleForm();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [fDate, setFDate] = useState("");
   const [fHours, setFHours] = useState("");
@@ -136,10 +138,6 @@ export default function ClinicalsPage() {
   const [formError, setFormError] = useState("");
 
   const pending = useRef<Map<string, { item: ClinicalSession; timeout: number }>>(new Map());
-  const formRef = useRef<HTMLDivElement>(null);
-  const prevScrollY = useRef(0);
-  const didToggle = useRef(false);
-  const scrollAfterAdd = useRef(false);
 
   useEffect(() => {
     (async () => {
@@ -154,29 +152,6 @@ export default function ClinicalsPage() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Expand → scroll the form into view. Collapse → scroll back to where the
-  // "Log Clinical Session" / edit button was when it was clicked.
-  useEffect(() => {
-    if (formOpen) {
-      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    } else if (didToggle.current) {
-      window.scrollTo({ top: prevScrollY.current, behavior: "smooth" });
-    }
-  }, [formOpen]);
-
-  // After adding to the (above-the-form) list, the form gets pushed down —
-  // pull it back into view so you stay on it for the next entry.
-  useEffect(() => {
-    if (scrollAfterAdd.current) {
-      scrollAfterAdd.current = false;
-      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }, [sessions]);
-
-  function scrollToForm() {
-    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
 
   function openDetail(s: ClinicalSession) {
     setDetail(s);
@@ -196,12 +171,10 @@ export default function ClinicalsPage() {
   }
 
   function openAdd() {
-    prevScrollY.current = window.scrollY;
-    didToggle.current = true;
     setEditingId(null);
     setFormError("");
     resetFields();
-    setFormOpen(true);
+    openForm();
   }
 
   function openEdit(s: ClinicalSession) {
@@ -216,20 +189,14 @@ export default function ClinicalsPage() {
     setFPrep(s.prep ?? "");
     setFReflections(s.reflections ?? "");
     setFTakeaways(s.takeaways ?? "");
-    if (!formOpen) {
-      prevScrollY.current = window.scrollY;
-      didToggle.current = true;
-      setFormOpen(true); // effect scrolls it into view
-    } else {
-      scrollToForm(); // already open — bring it into view now
-    }
+    if (!formOpen) openForm(); // effect scrolls it into view
+    else scrollFormIntoView(); // already open — bring it into view now
   }
 
   function closeForm() {
-    didToggle.current = true;
     setEditingId(null);
     setFormError("");
-    setFormOpen(false);
+    collapseForm();
   }
 
   async function submit() {
@@ -266,7 +233,7 @@ export default function ClinicalsPage() {
       setFPrep("");
       setFReflections("");
       setFTakeaways("");
-      scrollAfterAdd.current = true;
+      scrollFormIntoView();
     }
   }
 
@@ -317,92 +284,112 @@ export default function ClinicalsPage() {
 
   return (
     <div className="page active">
-      <div className="page-header">
-        <h1>Clinicals</h1>
-        <p>Bridge the gap between theory and practice</p>
-      </div>
+      <PageHeader
+        icon={<Target size={22} />}
+        title="Clinicals"
+        subtitle="Bridge the gap between theory and practice"
+        actions={!formOpen ? (
+          <Button className="k-desktop-only" onClick={openAdd}>
+            <Plus size={16} /> Log Session
+          </Button>
+        ) : undefined}
+      />
 
       {/* SUMMARY STATS — computed from the logged sessions */}
-      <div className="stats-grid">
-        <div className="stat-card"><div className="stat-label">Total Clinical Hours</div><div className="stat-val">{fmtHours(totalHours)}h</div></div>
-        <div className="stat-card"><div className="stat-label">Sessions Completed</div><div className="stat-val">{sessionCount}</div></div>
-        <div className="stat-card"><div className="stat-label">Avg Session Length</div><div className="stat-val">{avgLength != null ? `${fmtHours(Math.round(avgLength * 10) / 10)}h` : "—"}</div></div>
-        <div className="stat-card"><div className="stat-label">Avg Difficulty</div><div className="stat-val" style={avgDiffIdx != null ? { color: difficultyStyle(DIFFICULTIES[avgDiffIdx - 1]).color } : undefined}>{avgDiffIdx != null ? DIFF_SHORT[avgDiffIdx - 1] : "—"}</div></div>
+      <div className="k-stats-grid" style={{ marginBottom: "1.5rem" }}>
+        <StatCard tone="terracotta" label="Total Clinical Hours" value={`${fmtHours(totalHours)}h`} />
+        <StatCard tone="olive" label="Sessions Completed" value={sessionCount} />
+        <StatCard tone="ochre" label="Avg Session Length" value={avgLength != null ? `${fmtHours(Math.round(avgLength * 10) / 10)}h` : "—"} />
+        <StatCard
+          tone="forest"
+          label="Avg Difficulty"
+          value={<span style={avgDiffIdx != null ? { color: difficultyStyle(DIFFICULTIES[avgDiffIdx - 1]).color } : undefined}>{avgDiffIdx != null ? DIFF_SHORT[avgDiffIdx - 1] : "—"}</span>}
+        />
       </div>
 
       {/* LOGGED SESSIONS — compact cards, click to open the detail view */}
-      <div className="card-title" style={{ marginBottom: "1rem", fontFamily: "var(--font-caveat), cursive", fontSize: "1.1rem", color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "0.45rem" }}>
-        <PenLine size={18} /> Logged Sessions
-      </div>
+      <Section title={<span style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem" }}><PenLine size={18} /> Logged Sessions</span>}>
+        {loading ? (
+          <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", padding: "1rem", fontStyle: "italic", textAlign: "center" }}>Loading…</div>
+        ) : sessions.length === 0 ? (
+          <Card>
+            <EmptyState
+              icon={<PenLine size={26} />}
+              title="No clinical sessions logged yet"
+              description="Log your first session to start tracking hours, supervisors and reflections."
+            />
+          </Card>
+        ) : (
+          sessions.map((s) => {
+            const badge = difficultyStyle(s.difficulty);
+            const meta = [
+              s.supervisor ? `Supervisor: ${s.supervisor}` : null,
+              s.hours != null ? `${fmtHours(s.hours)} hrs` : null,
+            ].filter(Boolean).join(" · ");
+            const hasNotes = !!(s.prep || s.reflections || s.takeaways);
+            return (
+              <button className="clinical-card" key={s.id} onClick={() => openDetail(s)}>
+                <div className="clinical-card-main">
+                  <div className="clinical-name">{s.department || "Clinical Session"}</div>
+                  {meta && <div className="clinical-meta">{meta}</div>}
+                  {s.goal && <div className="clinical-goal">Goal: {s.goal}</div>}
+                  {hasNotes && <div className="clinical-notes-hint"><FileText size={12} /> Notes &amp; reflections</div>}
+                </div>
+                <div className="clinical-aside">
+                  {s.session_date && <div className="clinical-date">{formatDate(s.session_date)}</div>}
+                  {s.difficulty && <span className="clinical-diff" style={{ background: badge.bg, color: badge.color }}>{s.difficulty}</span>}
+                </div>
+                <ChevronRight className="clinical-chevron" size={18} />
+              </button>
+            );
+          })
+        )}
+      </Section>
 
-      {loading ? (
-        <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", padding: "1rem", fontStyle: "italic", textAlign: "center" }}>Loading…</div>
-      ) : sessions.length === 0 ? (
-        <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", padding: "2rem 1rem", fontStyle: "italic", textAlign: "center" }}>
-          No clinical sessions logged yet — add your first one below.
+      {/* Mobile: the "New" action sits at the bottom-left of the list. */}
+      {!formOpen && (
+        <div className="k-mobile-only k-mobile-add">
+          <Button onClick={openAdd}><Plus size={16} /> Log Session</Button>
         </div>
-      ) : (
-        sessions.map((s) => {
-          const badge = difficultyStyle(s.difficulty);
-          const meta = [
-            s.supervisor ? `Supervisor: ${s.supervisor}` : null,
-            s.hours != null ? `${fmtHours(s.hours)} hrs` : null,
-          ].filter(Boolean).join(" · ");
-          const hasNotes = !!(s.prep || s.reflections || s.takeaways);
-          return (
-            <button className="clinical-card" key={s.id} onClick={() => openDetail(s)}>
-              <div className="clinical-card-main">
-                <div className="clinical-name">{s.department || "Clinical Session"}</div>
-                {meta && <div className="clinical-meta">{meta}</div>}
-                {s.goal && <div className="clinical-goal">Goal: {s.goal}</div>}
-                {hasNotes && <div className="clinical-notes-hint"><FileText size={12} /> Notes &amp; reflections</div>}
-              </div>
-              <div className="clinical-aside">
-                {s.session_date && <div className="clinical-date">{formatDate(s.session_date)}</div>}
-                {s.difficulty && <span className="clinical-diff" style={{ background: badge.bg, color: badge.color }}>{s.difficulty}</span>}
-              </div>
-              <ChevronRight className="clinical-chevron" size={18} />
-            </button>
-          );
-        })
       )}
 
-      {/* LOG / EDIT SESSION — a plain button when collapsed, the full form when expanded */}
-      <div style={{ marginTop: "1.25rem" }}>
-        {!formOpen && (
-          <button className="btn-add" onClick={openAdd} style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
-            <Plus size={16} /> Log Clinical Session
-          </button>
-        )}
-
-        {formOpen && (
-          <div className="form-section" ref={formRef} style={{ scrollMarginTop: "1rem", marginBottom: 0 }}>
-            <h3>{editingId ? "Edit Clinical Session" : "Log Clinical Session"}</h3>
-            <div className="input-row three">
-              <div className="field-group"><div className="field-label">Date</div><input className="field-input" type="date" value={fDate} onChange={(e) => { setFDate(e.target.value); if (formError) setFormError(""); }} /></div>
-              <div className="field-group"><div className="field-label">Time Spent (hrs)</div><input className="field-input" type="number" min="0" step="0.5" value={fHours} onChange={(e) => setFHours(e.target.value)} placeholder="4" /></div>
-              <div className="field-group"><div className="field-label">Difficulty</div>
-                <select className="field-select" value={fDifficulty} onChange={(e) => setFDifficulty(e.target.value)}>
+      {/* LOG / EDIT SESSION */}
+      {formOpen && (
+        <div ref={formRef} style={{ scrollMarginTop: "1rem" }}>
+          <Card title={editingId ? "Edit Clinical Session" : "Log Clinical Session"} icon={<PenLine size={20} />}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "0.75rem" }}>
+              <Field label="Date" htmlFor="cl-date"><Input id="cl-date" type="date" value={fDate} onChange={(e) => { setFDate(e.target.value); if (formError) setFormError(""); }} /></Field>
+              <Field label="Time Spent (hrs)" htmlFor="cl-hours"><Input id="cl-hours" type="number" min="0" step="0.5" value={fHours} onChange={(e) => setFHours(e.target.value)} placeholder="4" /></Field>
+              <Field label="Difficulty" htmlFor="cl-diff">
+                <Select id="cl-diff" value={fDifficulty} onChange={(e) => setFDifficulty(e.target.value)}>
                   {DIFFICULTIES.map((d) => <option key={d} value={d}>{d}</option>)}
-                </select>
-              </div>
+                </Select>
+              </Field>
             </div>
-            <div className="input-row">
-              <div className="field-group"><div className="field-label">Supervisor/Professor</div><input className="field-input" value={fSupervisor} onChange={(e) => setFSupervisor(e.target.value)} placeholder="Dr. Williams" /></div>
-              <div className="field-group"><div className="field-label">Department/Ward</div><input className="field-input" value={fDepartment} onChange={(e) => setFDepartment(e.target.value)} placeholder="e.g., Medical Ward 3" /></div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: "0.75rem", marginTop: "0.75rem" }}>
+              <Field label="Supervisor/Professor" htmlFor="cl-sup"><Input id="cl-sup" value={fSupervisor} onChange={(e) => setFSupervisor(e.target.value)} placeholder="Dr. Williams" /></Field>
+              <Field label="Department/Ward" htmlFor="cl-dept"><Input id="cl-dept" value={fDepartment} onChange={(e) => setFDepartment(e.target.value)} placeholder="e.g., Medical Ward 3" /></Field>
             </div>
-            <div className="input-row single"><div className="field-group"><div className="field-label">Goal for the Day</div><input className="field-input" value={fGoal} onChange={(e) => setFGoal(e.target.value)} placeholder="What do you aim to accomplish today?" /></div></div>
-            <div className="input-row single"><div className="field-group"><div className="field-label">Things to Learn/Prepare Before Clinical</div><textarea className="field-textarea" value={fPrep} onChange={(e) => setFPrep(e.target.value)} placeholder="Medications, procedures, patient conditions to review..." /></div></div>
-            <div className="input-row single"><div className="field-group"><div className="field-label">Reflections After Clinical</div><textarea className="field-textarea" value={fReflections} onChange={(e) => setFReflections(e.target.value)} placeholder="What did you observe? What did you learn? What will you improve?" /></div></div>
-            <div className="input-row single"><div className="field-group"><div className="field-label">Key Takeaways / What to Consider</div><textarea className="field-textarea" value={fTakeaways} onChange={(e) => setFTakeaways(e.target.value)} placeholder="Important clinical notes, patient care insights..." /></div></div>
-            <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
-              <button className="btn-add" onClick={(e) => { e.currentTarget.blur(); submit(); }}>{editingId ? "Save Changes" : "+ Log Session"}</button>
-              <button className="btn-outline" onClick={closeForm} style={{ padding: "0.5rem 1rem" }}>{editingId ? "Cancel" : "Done"}</button>
+            <div style={{ marginTop: "0.75rem" }}>
+              <Field label="Goal for the Day" htmlFor="cl-goal"><Input id="cl-goal" value={fGoal} onChange={(e) => setFGoal(e.target.value)} placeholder="What do you aim to accomplish today?" /></Field>
+            </div>
+            <div style={{ marginTop: "0.75rem" }}>
+              <Field label="Things to Learn/Prepare Before Clinical" htmlFor="cl-prep"><Textarea id="cl-prep" value={fPrep} onChange={(e) => setFPrep(e.target.value)} placeholder="Medications, procedures, patient conditions to review..." /></Field>
+            </div>
+            <div style={{ marginTop: "0.75rem" }}>
+              <Field label="Reflections After Clinical" htmlFor="cl-refl"><Textarea id="cl-refl" value={fReflections} onChange={(e) => setFReflections(e.target.value)} placeholder="What did you observe? What did you learn? What will you improve?" /></Field>
+            </div>
+            <div style={{ marginTop: "0.75rem" }}>
+              <Field label="Key Takeaways / What to Consider" htmlFor="cl-take"><Textarea id="cl-take" value={fTakeaways} onChange={(e) => setFTakeaways(e.target.value)} placeholder="Important clinical notes, patient care insights..." /></Field>
+            </div>
+            <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap", marginTop: "1.1rem" }}>
+              <Button onClick={(e) => { e.currentTarget.blur(); submit(); }}>{editingId ? "Save Changes" : "Log Session"}</Button>
+              <Button variant="outline" onClick={closeForm}>{editingId ? "Cancel" : "Done"}</Button>
               {formError && <span style={{ color: "var(--terracotta-dark)", fontSize: "0.82rem" }}>{formError}</span>}
             </div>
-          </div>
-        )}
-      </div>
+          </Card>
+        </div>
+      )}
 
       {/* SESSION DETAIL — centered dialog on desktop, snap-point bottom sheet on mobile */}
       <DetailSheet open={detailOpen} onOpenChange={setDetailOpen} title={detail?.department || "Clinical Session"}>

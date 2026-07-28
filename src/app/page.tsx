@@ -11,10 +11,21 @@ import {
   CalendarClock,
   Target,
   BarChart3,
+  Plus,
   X,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/components/profile-provider";
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  Input,
+  PageHero,
+  Progress,
+  StatCard,
+} from "@/components/kit";
 
 type Task = { id: string; text: string; tag: string | null; tag_class: string | null; done: boolean };
 type Priority = "high" | "medium" | "low";
@@ -38,21 +49,16 @@ function parseDate(s: string) {
   return new Date(y, m - 1, d);
 }
 
-const chipStyle: React.CSSProperties = {
+// Translucent pill for the warm hero banner (matches the login hero chips).
+const heroChip: React.CSSProperties = {
   fontSize: "0.8rem",
-  color: "var(--text-secondary)",
-  background: "rgba(255,255,255,0.5)",
-  padding: "0.3rem 0.75rem",
-  borderRadius: "20px",
+  color: "#FBF1E6",
+  background: "rgba(255,255,255,0.16)",
+  padding: "0.32rem 0.75rem",
+  borderRadius: "999px",
   display: "inline-flex",
   alignItems: "center",
   gap: "0.35rem",
-};
-
-const cardTitleStyle: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "0.45rem",
 };
 
 function getWeekNumber(d: Date) {
@@ -73,7 +79,8 @@ function Dot({ color }: { color: string }) {
 
 export default function DashboardPage() {
   const supabase = createClient();
-  const { name } = useProfile();
+  const { name, streak, level, recordActivity } = useProfile();
+  const TierIcon = level.tier.icon;
   const displayName = name || "Nurse";
   const [tasks, setTasks] = useState<Task[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -86,6 +93,9 @@ export default function DashboardPage() {
     const now = new Date();
     const h = now.getHours();
     const g = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+    // Computed on mount (not at render) so the SSR markup stays stable — the
+    // greeting + date depend on the viewer's clock.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTimePart(g);
     const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     const months = [
@@ -128,6 +138,8 @@ export default function DashboardPage() {
   async function toggleTask(id: string, done: boolean) {
     setTasks((t) => t.map((x) => (x.id === id ? { ...x, done } : x)));
     await supabase.from("daily_tasks").update({ done }).eq("id", id);
+    // Completing a task counts today toward the study streak.
+    if (done) await recordActivity();
   }
 
   async function removeTask(id: string) {
@@ -164,79 +176,61 @@ export default function DashboardPage() {
 
   return (
     <div className="page active">
-      {/* Greeting */}
-      <div className="greeting-banner">
-        <h2>{timePart}, {displayName}!</h2>
-        <p>{dateLabel}</p>
-        <div style={{ display: "flex", gap: "1rem", marginTop: "0.75rem", flexWrap: "wrap" }}>
-          <div style={chipStyle}>
-            <Flame size={14} /> <span>0</span> day streak
-          </div>
-          <div style={chipStyle}>
-            <Palette size={14} /> <span>Beginner</span>
-          </div>
-          <div style={chipStyle}>
+      {/* Greeting hero */}
+      <PageHero title={`${timePart}, ${displayName}!`} subtitle={dateLabel}>
+        <div style={{ display: "flex", gap: "0.6rem", marginTop: "0.9rem", flexWrap: "wrap" }}>
+          <span style={heroChip}>
+            <Flame size={14} /> <span>{streak}</span> day streak
+          </span>
+          <span style={heroChip}>
+            <TierIcon size={14} /> {level.tier.name}
+          </span>
+          <span style={heroChip}>
             <Calendar size={14} /> Year <span>1</span>
-          </div>
+          </span>
         </div>
-      </div>
+      </PageHero>
 
       {/* Affirmation */}
-      <div className="affirmation-banner">
-        <Sparkles size={20} style={{ flexShrink: 0 }} />
-        <p>
+      <Alert tone="info" icon={<Sparkles size={18} />} style={{ marginBottom: "1.5rem" }}>
+        <span style={{ fontStyle: "italic" }}>
           {`"You are capable of extraordinary things. Every patient you'll save starts with this moment of study."`}
-        </p>
-      </div>
+        </span>
+      </Alert>
 
       {/* Stats */}
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-label">Today&apos;s Study Time</div>
-          <div className="stat-val">0h 0m</div>
-          <div className="progress-bar">
-            <div className="progress-fill fill-terracotta" style={{ width: "0%" }} />
-          </div>
-          <div className="stat-sub">Goal: 3h today</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Tasks Completed</div>
-          <div className="stat-val">{doneCount}/{total}</div>
-          <div className="progress-bar">
-            <div className="progress-fill fill-olive" style={{ width: `${percent}%` }} />
-          </div>
-          <div className="stat-sub">{percent}% done today</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Upcoming Exams</div>
-          <div className="stat-val">2</div>
-          <div className="stat-sub">Next: Pharmacology in 12d</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Assignment Due Soon</div>
-          <div className="stat-val">{dueSoon.length}</div>
-          <div className="stat-sub">
-            {dueSoon.length > 0 && soonest ? `${soonest.title} — ${dueLabel(soonest)}` : "Nothing due soon"}
-          </div>
-        </div>
+      <div className="k-stats-grid" style={{ marginBottom: "1.5rem" }}>
+        <StatCard tone="terracotta" label="Today's Study Time" value="0h 0m">
+          <Progress value={0} tone="terracotta" style={{ margin: "0.5rem 0 0.3rem" }} />
+          <div className="k-stat__sub">Goal: 3h today</div>
+        </StatCard>
+        <StatCard tone="olive" label="Tasks Completed" value={`${doneCount}/${total}`}>
+          <Progress value={percent} tone="olive" style={{ margin: "0.5rem 0 0.3rem" }} />
+          <div className="k-stat__sub">{percent}% done today</div>
+        </StatCard>
+        <StatCard tone="ochre" label="Upcoming Exams" value="2" sub="Next: Pharmacology in 12d" />
+        <StatCard
+          tone="forest"
+          label="Assignment Due Soon"
+          value={dueSoon.length}
+          sub={dueSoon.length > 0 && soonest ? `${soonest.title} — ${dueLabel(soonest)}` : "Nothing due soon"}
+        />
       </div>
 
       {/* Tasks + Discipline Level */}
       <div className="dash-grid">
-        <div className="card dash-wide">
-          <div className="card-title" style={cardTitleStyle}>
-            <ClipboardList size={18} /> Today&apos;s Tasks
-          </div>
-          <div style={{ display: "flex", gap: "0.4rem", margin: "0.5rem 0 0.75rem" }}>
-            <input
-              className="field-input"
+        <Card className="dash-wide" title="Today's Tasks" icon={<ClipboardList size={20} />}>
+          <div style={{ display: "flex", gap: "0.4rem", margin: "0 0 0.9rem" }}>
+            <Input
               value={newTask}
               onChange={(e) => setNewTask(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") addTask(); }}
               placeholder="Add a task for today..."
-              style={{ flex: 1, fontSize: "0.85rem", padding: "0.4rem 0.75rem" }}
+              style={{ flex: 1 }}
             />
-            <button className="btn-add" onClick={addTask} style={{ padding: "0.4rem 0.75rem", fontSize: "0.82rem" }}>+</button>
+            <Button iconOnly onClick={addTask} aria-label="Add task">
+              <Plus size={18} />
+            </Button>
           </div>
           {total ? (
             <ul className="today-tasks-list">
@@ -275,15 +269,12 @@ export default function DashboardPage() {
               No tasks yet — add your first one above.
             </div>
           )}
-        </div>
+        </Card>
 
-        <div className="card">
-          <div className="card-title" style={cardTitleStyle}>
-            <Palette size={18} /> Discipline Level
-          </div>
+        <Card title="Discipline Level" icon={<Palette size={20} />}>
           <div className="level-display">
             <div className="level-circle" style={{ background: "var(--terracotta)" }}>
-              1
+              {level.level}
             </div>
             <div
               style={{
@@ -293,27 +284,24 @@ export default function DashboardPage() {
                 fontWeight: 600,
               }}
             >
-              Beginner
+              {level.tier.name}
             </div>
             <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.25rem" }}>
-              Keep your streak to level up!
+              {level.next ? "Build your longest streak to level up!" : "🏆 Top of the ladder — Legend!"}
             </div>
-            <div className="progress-bar" style={{ marginTop: "0.75rem" }}>
-              <div className="progress-fill fill-terracotta" style={{ width: "15%" }} />
-            </div>
+            <Progress value={level.progress} tone="terracotta" style={{ marginTop: "0.75rem" }} />
             <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: "0.25rem" }}>
-              Next: Rising (3 days)
+              {level.next
+                ? `Next: ${level.next.name} (${level.daysToNext} ${level.daysToNext === 1 ? "day" : "days"} to go)`
+                : "Max level reached"}
             </div>
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* Assignments + Goals + Week progress */}
       <div className="dash-grid">
-        <div className="card">
-          <div className="card-title" style={cardTitleStyle}>
-            <CalendarClock size={18} /> Assignments
-          </div>
+        <Card title="Assignments" icon={<CalendarClock size={20} />}>
           {topAssignments.length ? (
             topAssignments.map((a) => {
               const overdue = !!a.due_date && daysUntil(a.due_date) < 0;
@@ -324,7 +312,11 @@ export default function DashboardPage() {
                     <div style={{ fontSize: "0.85rem", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.title}</div>
                     <div style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>{a.course}</div>
                   </div>
-                  <span style={{ fontSize: "0.75rem", color: overdue ? "var(--terracotta)" : "var(--text-muted)", whiteSpace: "nowrap" }}>{dueLabel(a)}</span>
+                  {overdue ? (
+                    <Badge tone="terracotta" solid>{dueLabel(a)}</Badge>
+                  ) : (
+                    <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", whiteSpace: "nowrap" }}>{dueLabel(a)}</span>
+                  )}
                 </div>
               );
             })
@@ -338,19 +330,14 @@ export default function DashboardPage() {
               View all ({assignments.length}) →
             </Link>
           )}
-        </div>
+        </Card>
 
-        <div className="card">
-          <div className="card-title" style={cardTitleStyle}>
-            <Target size={18} /> Active Goals
-          </div>
+        <Card title="Active Goals" icon={<Target size={20} />}>
           <div className="data-item">
             <Target size={15} style={{ color: "var(--terracotta)", flexShrink: 0 }} />
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: "0.85rem", fontWeight: 500 }}>Pass Pharmacology Mid-Term</div>
-              <div className="progress-bar" style={{ marginTop: 4 }}>
-                <div className="progress-fill fill-terracotta" style={{ width: "60%" }} />
-              </div>
+              <Progress value={60} tone="terracotta" style={{ marginTop: 4 }} />
             </div>
             <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>60%</span>
           </div>
@@ -358,28 +345,21 @@ export default function DashboardPage() {
             <Target size={15} style={{ color: "var(--olive)", flexShrink: 0 }} />
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: "0.85rem", fontWeight: 500 }}>Complete 30-Day Study Streak</div>
-              <div className="progress-bar" style={{ marginTop: 4 }}>
-                <div className="progress-fill fill-olive" style={{ width: "0%" }} />
-              </div>
+              <Progress value={Math.min(100, Math.round((streak / 30) * 100))} tone="olive" style={{ marginTop: 4 }} />
             </div>
-            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>0%</span>
+            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{Math.min(100, Math.round((streak / 30) * 100))}%</span>
           </div>
           <div className="data-item">
             <Target size={15} style={{ color: "var(--ochre)", flexShrink: 0 }} />
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: "0.85rem", fontWeight: 500 }}>Maintain GPA above 3.5</div>
-              <div className="progress-bar" style={{ marginTop: 4 }}>
-                <div className="progress-fill fill-ochre" style={{ width: "75%" }} />
-              </div>
+              <Progress value={75} tone="ochre" style={{ marginTop: 4 }} />
             </div>
             <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>3.7</span>
           </div>
-        </div>
+        </Card>
 
-        <div className="card">
-          <div className="card-title" style={cardTitleStyle}>
-            <BarChart3 size={18} /> Week Progress
-          </div>
+        <Card title="Week Progress" icon={<BarChart3 size={20} />}>
           <div className="chart-container">
             {[
               { h: 70, cls: "fill-terracotta", label: "Mon", op: 1 },
@@ -399,7 +379,7 @@ export default function DashboardPage() {
           <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: "0.5rem", textAlign: "center" }}>
             Study hours this week (Mon–Sun)
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );

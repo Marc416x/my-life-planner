@@ -8,6 +8,9 @@ import "@/styles/legacy/themes.css";
 import "@/styles/legacy/responsive.css";
 import "@/styles/legacy/auth.css";
 import "@/styles/legacy/onboarding.css";
+// Design kit — namespaced under `.k-*`, so it changes nothing on existing
+// pages. Loaded last so its tokens/classes resolve against everything above.
+import "@/styles/kit.css";
 import { AppShell } from "@/components/app-shell";
 import { ThemeInit } from "@/components/theme-init";
 import { ProfileProvider } from "@/components/profile-provider";

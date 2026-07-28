@@ -3,19 +3,24 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, X, LogOut, Leaf, Sprout } from "lucide-react";
+import { X, LogOut, Leaf, Flame, Trophy, Pencil } from "lucide-react";
 import { navSections } from "@/lib/nav";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/components/profile-provider";
+import { Badge } from "@/components/kit";
+import { MobileBottomNav } from "@/components/mobile-bottom-nav";
+import { QuickEditProfile } from "@/components/quick-edit-profile";
 
 // Faithful reproduction of the original prototype's sidebar + layout, using the
-// original CSS classes. Adds a proper mobile drawer (the part that was buggy)
-// via the original `.sidebar.open` mechanism + an overlay.
+// original CSS classes. On mobile the sidebar is a drawer opened from the
+// bottom nav's Menu button; the pencil on the user card opens a quick-edit sheet.
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const { name, initials } = useProfile();
+  const { name, initials, streak, best, level } = useProfile();
+  const TierIcon = level.tier.icon;
   const close = () => setOpen(false);
 
   // Auth + first-run setup render without the app chrome (sidebar/topbar).
@@ -35,46 +40,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   const proBadge = (
-    <span
-      style={{
-        fontSize: "0.6rem",
-        background: "var(--ochre-light)",
-        color: "#7A5A10",
-        padding: "1px 5px",
-        borderRadius: "3px",
-        marginLeft: "auto",
-        fontWeight: 600,
-      }}
-    >
+    <Badge tone="ochre" style={{ marginLeft: "auto" }}>
       PRO
-    </span>
+    </Badge>
   );
 
   return (
     <div className="app-layout">
-      {/* Mobile hamburger — hidden on desktop */}
-      <button
-        type="button"
-        className="md:hidden inline-flex items-center justify-center"
-        onClick={() => setOpen(true)}
-        aria-label="Open menu"
-        style={{
-          position: "fixed",
-          top: "0.75rem",
-          left: "0.75rem",
-          zIndex: 97,
-          width: "40px",
-          height: "40px",
-          borderRadius: "10px",
-          background: "var(--bg-card)",
-          border: "1px solid var(--border-strong)",
-          color: "var(--text-primary)",
-          boxShadow: "var(--shadow)",
-        }}
-      >
-        <Menu size={22} />
-      </button>
-
       {/* Mobile overlay */}
       <div
         className={"sidebar-overlay md:hidden" + (open ? " active" : "")}
@@ -111,7 +83,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </button>
         </div>
 
-        <Link href="/settings" onClick={close} className="user-card" style={{ cursor: "pointer", textDecoration: "none", color: "inherit" }} title="Edit Profile">
+        <button
+          type="button"
+          className="user-card"
+          onClick={() => { close(); setEditOpen(true); }}
+          title="Edit profile"
+          style={{
+            width: "100%",
+            background: "none",
+            border: "none",
+            borderBottom: "1px solid var(--border)",
+            font: "inherit",
+            textAlign: "left",
+            cursor: "pointer",
+            color: "inherit",
+          }}
+        >
           <div className="user-avatar" id="sidebar-avatar">
             {initials || "?"}
           </div>
@@ -123,17 +110,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               className="level-badge"
               style={{ display: "inline-flex", alignItems: "center", gap: "3px" }}
             >
-              <Sprout size={11} /> Beginner
+              <TierIcon size={11} /> {level.tier.name}
             </div>
           </div>
-        </Link>
+          <span
+            aria-hidden
+            style={{ marginLeft: "auto", color: "var(--text-muted)", display: "inline-flex", flexShrink: 0 }}
+          >
+            <Pencil size={14} />
+          </span>
+        </button>
 
-        <div className="streak-mini">
-          <div className="streak-mini-label">Study Streak</div>
-          <div className="streak-mini-val" id="sidebar-streak">
-            0
+        <div className={"streak-mini" + (streak === 0 ? " streak-mini--cold" : "")}>
+          <span className="streak-mini__flame">
+            <Flame size={18} />
+          </span>
+          <div className="streak-mini__body">
+            <span className="streak-mini__val" id="sidebar-streak">{streak}</span>
+            <span className="streak-mini__label">day streak</span>
           </div>
-          <div className="streak-mini-sub">days consecutive</div>
+          {best > 0 && (
+            <span className="streak-mini__best" title={`Best streak: ${best} day${best === 1 ? "" : "s"}`}>
+              <Trophy size={11} /> {best}
+            </span>
+          )}
         </div>
 
         <nav>
@@ -178,6 +178,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Main content */}
       <main className="main-content">{children}</main>
+
+      {/* Mobile bottom tab bar (phone only) — Menu opens the sidebar drawer */}
+      <MobileBottomNav onMenu={() => setOpen(true)} onNavigate={close} />
+
+      {/* Quick-edit profile popup (opened from the user card pencil) */}
+      <QuickEditProfile open={editOpen} onOpenChange={setEditOpen} />
     </div>
   );
 }

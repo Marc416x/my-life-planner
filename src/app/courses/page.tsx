@@ -4,9 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { GraduationCap, CalendarDays, Dumbbell, PenLine, ClipboardList, BookOpen, Pencil, Trash2, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/toast-provider";
+import { useCollapsibleForm } from "@/lib/use-collapsible-form";
+import { PageHeader, Card, StatCard, Field, Input, Select, Button, Progress, EmptyState } from "@/components/kit";
 
-const cardTitle: React.CSSProperties = { display: "flex", alignItems: "center", gap: "0.45rem" };
 const row: React.CSSProperties = { display: "flex", alignItems: "center", gap: 6, marginBottom: 2 };
+const formGrid3: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "0.75rem" };
 
 const SEMESTERS = ["Spring 2026", "Summer 2026", "Fall 2026", "Spring 2027"];
 const DIFFICULTIES = ["Easy", "Medium", "Hard"];
@@ -77,8 +79,8 @@ export default function CoursesPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Add / edit form state (trimmed to the real courses table columns).
-  const [formOpen, setFormOpen] = useState(false);
+  // Add / edit course form (open/close + auto-scroll via the shared hook).
+  const { open: formOpen, formRef, openForm, closeForm: collapseForm, scrollFormIntoView } = useCollapsibleForm();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formError, setFormError] = useState("");
   const [fName, setFName] = useState("");
@@ -91,17 +93,15 @@ export default function CoursesPage() {
   const [fWeight, setFWeight] = useState("");
 
   const pending = useRef<Map<string, { item: Course; timeout: number }>>(new Map());
-  const formRef = useRef<HTMLDivElement>(null);
 
-  // Academic book library.
+  // Academic book library form (its own collapsible instance).
+  const { open: bookFormOpen, formRef: bookFormRef, openForm: openBookForm, closeForm: closeBookForm, scrollFormIntoView: scrollBookForm } = useCollapsibleForm();
   const [books, setBooks] = useState<Book[]>([]);
-  const [bookFormOpen, setBookFormOpen] = useState(false);
   const [bTitle, setBTitle] = useState("");
   const [bAuthor, setBAuthor] = useState("");
   const [bCourse, setBCourse] = useState("Pharmacology");
   const [bStatus, setBStatus] = useState("required");
   const bookPending = useRef<Map<string, { item: Book; timeout: number }>>(new Map());
-  const bookFormRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     (async () => {
@@ -119,14 +119,6 @@ export default function CoursesPage() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Auto-scroll the add/edit form into view when it expands.
-  useEffect(() => {
-    if (formOpen) formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [formOpen]);
-  useEffect(() => {
-    if (bookFormOpen) bookFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [bookFormOpen]);
 
   // Stats.
   const totalCredits = courses.reduce((s, c) => s + (c.credits ?? 0), 0);
@@ -152,7 +144,7 @@ export default function CoursesPage() {
   }
   function openAdd() {
     resetForm();
-    setFormOpen(true);
+    openForm();
   }
   function openEdit(c: Course) {
     setFormError("");
@@ -165,7 +157,8 @@ export default function CoursesPage() {
     setFDiff(c.difficulty ?? DIFFICULTIES[1]);
     setFGrade(c.grade_pct != null ? String(c.grade_pct) : "");
     setFWeight(c.weight_pct != null ? String(c.weight_pct) : "");
-    setFormOpen(true);
+    if (!formOpen) openForm();
+    else scrollFormIntoView();
   }
 
   async function submit() {
@@ -192,12 +185,12 @@ export default function CoursesPage() {
       const { data } = await supabase.from("courses").insert({ user_id: userId, ...payload }).select().single();
       if (data) setCourses((xs) => [...xs, data as Course]);
     }
-    setFormOpen(false);
+    collapseForm();
     resetForm();
   }
 
   function requestDelete(c: Course) {
-    if (editingId === c.id) { setFormOpen(false); resetForm(); }
+    if (editingId === c.id) { collapseForm(); resetForm(); }
     setCourses((xs) => xs.filter((x) => x.id !== c.id));
     const timeout = window.setTimeout(async () => {
       pending.current.delete(c.id);
@@ -228,6 +221,7 @@ export default function CoursesPage() {
     // Keep the form open so several books can be added in a row.
     setBTitle("");
     setBAuthor("");
+    scrollBookForm();
   }
 
   function requestDeleteBook(b: Book) {
@@ -252,27 +246,37 @@ export default function CoursesPage() {
 
   return (
     <div className="page active">
-      <div className="page-header">
-        <h1>Courses</h1>
-        <p>Manage your nursing subjects</p>
-      </div>
+      <PageHeader
+        icon={<GraduationCap size={22} />}
+        title="Courses"
+        subtitle="Manage your nursing subjects"
+        actions={!formOpen ? (
+          <Button className="k-desktop-only" onClick={openAdd}>
+            <Plus size={16} /> New Course
+          </Button>
+        ) : undefined}
+      />
 
       {/* Stats */}
-      <div className="stats-grid">
-        <div className="stat-card"><div className="stat-label">Courses</div><div className="stat-val">{courses.length}</div></div>
-        <div className="stat-card"><div className="stat-label">Total Credits</div><div className="stat-val">{totalCredits}</div></div>
-        <div className="stat-card"><div className="stat-label">Avg Grade</div><div className="stat-val" style={{ color: "var(--olive)" }}>{graded.length ? `${avgGrade}%` : "—"}</div><div className="progress-bar"><div className="progress-fill fill-olive" style={{ width: `${avgGrade}%` }} /></div></div>
-        <div className="stat-card"><div className="stat-label">Projected GPA</div><div className="stat-val">{gpa}</div></div>
+      <div className="k-stats-grid" style={{ marginBottom: "1.5rem" }}>
+        <StatCard tone="terracotta" label="Courses" value={courses.length} icon={<GraduationCap size={18} />} />
+        <StatCard tone="olive" label="Total Credits" value={totalCredits} />
+        <StatCard tone="ochre" label="Avg Grade" value={graded.length ? `${avgGrade}%` : "—"}>
+          {graded.length ? <Progress value={avgGrade} tone="olive" style={{ marginTop: "0.55rem" }} /> : null}
+        </StatCard>
+        <StatCard tone="forest" label="Projected GPA" value={gpa} />
       </div>
 
       {/* Course cards */}
-      <div className="card" style={{ marginBottom: "1.5rem" }}>
+      <Card style={{ marginBottom: "1rem" }}>
         {loading ? (
           <div style={{ textAlign: "center", color: "var(--text-muted)", padding: "1.5rem", fontStyle: "italic" }}>Loading…</div>
         ) : courses.length === 0 ? (
-          <div style={{ textAlign: "center", color: "var(--text-muted)", padding: "1.5rem", fontStyle: "italic" }}>
-            No courses yet — add your first one below.
-          </div>
+          <EmptyState
+            icon={<GraduationCap size={26} />}
+            title="No courses yet"
+            description="Add your first course to start tracking credits, grades and GPA."
+          />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {courses.map((c, i) => {
@@ -282,7 +286,7 @@ export default function CoursesPage() {
               return (
                 <div
                   key={c.id}
-                  style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "1.25rem", borderTop: `3px solid ${accent.top}` }}
+                  style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "var(--s-radius-sm)", padding: "1.25rem", borderTop: `3px solid ${accent.top}` }}
                 >
                   <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "0.5rem" }}>
                     <div style={{ minWidth: 0 }}>
@@ -309,81 +313,74 @@ export default function CoursesPage() {
             })}
           </div>
         )}
-      </div>
+      </Card>
+
+      {/* Mobile: the "New" action sits at the bottom-left of the list. */}
+      {!formOpen && (
+        <div className="k-mobile-only k-mobile-add">
+          <Button onClick={openAdd}><Plus size={16} /> New Course</Button>
+        </div>
+      )}
 
       {/* Add / Edit course */}
-      {!formOpen && (
-        <button className="btn-add" onClick={openAdd} style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
-          <Plus size={16} /> New Course
-        </button>
-      )}
       {formOpen && (
-        <div className="form-section" ref={formRef} style={{ scrollMarginTop: "1rem" }}>
-          <h3>{editingId ? "Edit Course" : "Add New Course"}</h3>
-          <div className="input-row three">
-            <div className="field-group"><div className="field-label">Course Name</div><input className="field-input" value={fName} onChange={(e) => { setFName(e.target.value); if (formError) setFormError(""); }} placeholder="e.g., Pharmacology" /></div>
-            <div className="field-group"><div className="field-label">Course Code</div><input className="field-input" value={fCode} onChange={(e) => setFCode(e.target.value)} placeholder="e.g., NUR301" /></div>
-            <div className="field-group"><div className="field-label">Credits</div><input className="field-input" type="number" min="0" value={fCredits} onChange={(e) => setFCredits(e.target.value)} placeholder="3" /></div>
-          </div>
-          <div className="input-row three">
-            <div className="field-group"><div className="field-label">Professor Name</div><input className="field-input" value={fProf} onChange={(e) => setFProf(e.target.value)} placeholder="Dr. Smith" /></div>
-            <div className="field-group"><div className="field-label">Semester</div><select className="field-select" value={fSem} onChange={(e) => setFSem(e.target.value)}>{SEMESTERS.map((s) => <option key={s}>{s}</option>)}</select></div>
-            <div className="field-group"><div className="field-label">Difficulty</div><select className="field-select" value={fDiff} onChange={(e) => setFDiff(e.target.value)}>{DIFFICULTIES.map((d) => <option key={d}>{d}</option>)}</select></div>
-          </div>
-          <div className="input-row">
-            <div className="field-group"><div className="field-label">Current Grade %</div><input className="field-input" type="number" min="0" max="100" value={fGrade} onChange={(e) => setFGrade(e.target.value)} placeholder="e.g., 88" /></div>
-            <div className="field-group"><div className="field-label">Weight % (of GPA)</div><input className="field-input" type="number" min="0" max="100" value={fWeight} onChange={(e) => setFWeight(e.target.value)} placeholder="e.g., 30" /></div>
-          </div>
-          <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
-            <button className="btn-add" onClick={(e) => { e.currentTarget.blur(); submit(); }}>{editingId ? "Save Changes" : "+ Add Course"}</button>
-            <button className="btn-outline" onClick={() => { setFormOpen(false); resetForm(); }} style={{ padding: "0.5rem 1rem" }}>Cancel</button>
-            {formError && <span style={{ color: "var(--terracotta-dark)", fontSize: "0.82rem" }}>{formError}</span>}
-          </div>
+        <div ref={formRef} style={{ scrollMarginTop: "1rem", marginTop: "1rem", marginBottom: "1.5rem" }}>
+          <Card title={editingId ? "Edit Course" : "Add New Course"} icon={<GraduationCap size={20} />}>
+            <div style={formGrid3}>
+              <Field label="Course Name" htmlFor="c-name">
+                <Input id="c-name" value={fName} onChange={(e) => { setFName(e.target.value); if (formError) setFormError(""); }} placeholder="e.g., Pharmacology" />
+              </Field>
+              <Field label="Course Code" htmlFor="c-code">
+                <Input id="c-code" value={fCode} onChange={(e) => setFCode(e.target.value)} placeholder="e.g., NUR301" />
+              </Field>
+              <Field label="Credits" htmlFor="c-credits">
+                <Input id="c-credits" type="number" min="0" value={fCredits} onChange={(e) => setFCredits(e.target.value)} placeholder="3" />
+              </Field>
+            </div>
+            <div style={{ ...formGrid3, marginTop: "0.75rem" }}>
+              <Field label="Professor Name" htmlFor="c-prof">
+                <Input id="c-prof" value={fProf} onChange={(e) => setFProf(e.target.value)} placeholder="Dr. Smith" />
+              </Field>
+              <Field label="Semester" htmlFor="c-sem">
+                <Select id="c-sem" value={fSem} onChange={(e) => setFSem(e.target.value)}>{SEMESTERS.map((s) => <option key={s}>{s}</option>)}</Select>
+              </Field>
+              <Field label="Difficulty" htmlFor="c-diff">
+                <Select id="c-diff" value={fDiff} onChange={(e) => setFDiff(e.target.value)}>{DIFFICULTIES.map((d) => <option key={d}>{d}</option>)}</Select>
+              </Field>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "0.75rem", marginTop: "0.75rem" }}>
+              <Field label="Current Grade %" htmlFor="c-grade">
+                <Input id="c-grade" type="number" min="0" max="100" value={fGrade} onChange={(e) => setFGrade(e.target.value)} placeholder="e.g., 88" />
+              </Field>
+              <Field label="Weight % (of GPA)" htmlFor="c-weight">
+                <Input id="c-weight" type="number" min="0" max="100" value={fWeight} onChange={(e) => setFWeight(e.target.value)} placeholder="e.g., 30" />
+              </Field>
+            </div>
+            <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap", marginTop: "1.1rem" }}>
+              <Button onClick={(e) => { e.currentTarget.blur(); submit(); }}>{editingId ? "Save Changes" : "Add Course"}</Button>
+              <Button variant="outline" onClick={() => { collapseForm(); resetForm(); }}>Cancel</Button>
+              {formError && <span style={{ color: "var(--terracotta-dark)", fontSize: "0.82rem" }}>{formError}</span>}
+            </div>
+          </Card>
         </div>
       )}
 
       {/* ACADEMIC BOOKS */}
-      <div className="form-section" style={{ marginTop: "1.5rem" }}>
-        <h3 style={cardTitle}><BookOpen size={18} /> Academic Book Library</h3>
-        <p style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginBottom: "1rem", fontStyle: "italic" }}>
-          Add required and recommended books for your nursing courses
-        </p>
-
-        {!bookFormOpen && (
-          <button className="btn-add" onClick={() => setBookFormOpen(true)} style={{ padding: "0.5rem 0.75rem", fontSize: "0.82rem", display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
+      <Card
+        style={{ marginTop: "1.5rem" }}
+        title="Academic Book Library"
+        subtitle="Add required and recommended books for your nursing courses"
+        icon={<BookOpen size={20} />}
+        action={!bookFormOpen ? (
+          <Button className="k-desktop-only" size="sm" variant="outline" onClick={openBookForm}>
             <Plus size={15} /> New Book
-          </button>
-        )}
-        {bookFormOpen && (
-          <div ref={bookFormRef} style={{ scrollMarginTop: "1rem" }}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3" style={{ alignItems: "end", marginBottom: "0.75rem" }}>
-              <div className="field-group"><div className="field-label">Book Title</div><input className="field-input" value={bTitle} onChange={(e) => setBTitle(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addBook(); }} placeholder="e.g., Nursing Pharmacology" style={{ fontSize: "0.82rem", padding: "0.45rem" }} /></div>
-              <div className="field-group"><div className="field-label">Author</div><input className="field-input" value={bAuthor} onChange={(e) => setBAuthor(e.target.value)} placeholder="Author name" style={{ fontSize: "0.82rem", padding: "0.45rem" }} /></div>
-              <div className="field-group"><div className="field-label">Course</div>
-                <select className="field-select" value={bCourse} onChange={(e) => setBCourse(e.target.value)} style={{ fontSize: "0.82rem", padding: "0.45rem" }}>
-                  <option>Pharmacology</option><option>Fundamentals</option><option>Clinical Lab</option><option>Anatomy</option><option>General</option>
-                </select>
-              </div>
-              <div className="field-group"><div className="field-label">Status</div>
-                <select className="field-select" value={bStatus} onChange={(e) => setBStatus(e.target.value)} style={{ fontSize: "0.82rem", padding: "0.45rem" }}>
-                  <option value="required">Required</option>
-                  <option value="recommended">Recommended</option>
-                  <option value="reading">Currently Reading</option>
-                  <option value="done">Completed</option>
-                </select>
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
-              <button className="btn-add" onClick={addBook} style={{ padding: "0.5rem 0.75rem", fontSize: "0.82rem" }}>+ Add Book</button>
-              <button className="btn-outline" onClick={() => { setBookFormOpen(false); setBTitle(""); setBAuthor(""); }} style={{ padding: "0.5rem 1rem", fontSize: "0.82rem" }}>Done</button>
-            </div>
-          </div>
-        )}
-
+          </Button>
+        ) : undefined}
+      >
         {books.length ? (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: "0.75rem", marginTop: "1rem" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: "0.75rem" }}>
             {books.map((b) => (
-              <div key={b.id} className="card" style={{ padding: "0.85rem", position: "relative" }}>
+              <div key={b.id} style={{ background: "var(--bg-main)", border: "1px solid var(--border)", borderRadius: "var(--s-radius-sm)", padding: "0.85rem", position: "relative" }}>
                 <button onClick={() => requestDeleteBook(b)} aria-label="Delete book" style={{ position: "absolute", top: "0.5rem", right: "0.5rem", background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "inline-flex", padding: 2 }}><Trash2 size={14} /></button>
                 <div style={{ fontWeight: 600, fontSize: "0.88rem", paddingRight: "1.25rem" }}>{b.title}</div>
                 {b.author && <div style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>{b.author}</div>}
@@ -393,10 +390,47 @@ export default function CoursesPage() {
           </div>
         ) : (
           <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", textAlign: "center", padding: "1.5rem", fontStyle: "italic" }}>
-            No books added yet. Add your required textbooks above.
+            No books added yet. Add your required textbooks below.
           </div>
         )}
-      </div>
+
+        {/* Mobile: New Book at the bottom-left of the book list. */}
+        {!bookFormOpen && (
+          <div className="k-mobile-only k-mobile-add">
+            <Button size="sm" variant="outline" onClick={openBookForm}><Plus size={15} /> New Book</Button>
+          </div>
+        )}
+
+        {bookFormOpen && (
+          <div ref={bookFormRef} style={{ scrollMarginTop: "1rem", marginTop: "1rem" }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3" style={{ alignItems: "end", marginBottom: "0.9rem" }}>
+              <Field label="Book Title" htmlFor="b-title">
+                <Input id="b-title" value={bTitle} onChange={(e) => setBTitle(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addBook(); }} placeholder="e.g., Nursing Pharmacology" />
+              </Field>
+              <Field label="Author" htmlFor="b-author">
+                <Input id="b-author" value={bAuthor} onChange={(e) => setBAuthor(e.target.value)} placeholder="Author name" />
+              </Field>
+              <Field label="Course" htmlFor="b-course">
+                <Select id="b-course" value={bCourse} onChange={(e) => setBCourse(e.target.value)}>
+                  <option>Pharmacology</option><option>Fundamentals</option><option>Clinical Lab</option><option>Anatomy</option><option>General</option>
+                </Select>
+              </Field>
+              <Field label="Status" htmlFor="b-status">
+                <Select id="b-status" value={bStatus} onChange={(e) => setBStatus(e.target.value)}>
+                  <option value="required">Required</option>
+                  <option value="recommended">Recommended</option>
+                  <option value="reading">Currently Reading</option>
+                  <option value="done">Completed</option>
+                </Select>
+              </Field>
+            </div>
+            <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
+              <Button size="sm" onClick={addBook}>Add Book</Button>
+              <Button size="sm" variant="outline" onClick={() => { closeBookForm(); setBTitle(""); setBAuthor(""); }}>Done</Button>
+            </div>
+          </div>
+        )}
+      </Card>
     </div>
   );
 }

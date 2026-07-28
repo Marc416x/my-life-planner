@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Plus, Pencil, Trash2, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Trash2, ChevronRight, CalendarDays } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/toast-provider";
+import { useCollapsibleForm } from "@/lib/use-collapsible-form";
 import { DetailSheet } from "@/components/detail-sheet";
+import { PageHeader, Card, Field, Input, Select, Button } from "@/components/kit";
 
 type Course = { id: string; name: string; code: string | null };
 
@@ -111,9 +113,9 @@ function BlockDetail({ block, onEdit, onDelete, onClose }: {
       </div>
       <span className="sheet-badge" style={{ background: t.tint, color: t.color }}>{t.label}</span>
       <div className="sheet-actions">
-        <button className="btn-add" onClick={onEdit} style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}><Pencil size={14} /> Edit</button>
-        <button className="btn-danger" onClick={onDelete}><Trash2 size={14} /> Delete</button>
-        <button className="btn-outline sheet-action-spacer" onClick={onClose} style={{ padding: "0.5rem 1rem" }}>Close</button>
+        <Button size="sm" onClick={onEdit}><Pencil size={14} /> Edit</Button>
+        <Button size="sm" variant="danger" onClick={onDelete}><Trash2 size={14} /> Delete</Button>
+        <Button size="sm" variant="outline" className="sheet-action-spacer" onClick={onClose}>Close</Button>
       </div>
     </>
   );
@@ -135,8 +137,8 @@ export default function SchedulePage() {
   const [detail, setDetail] = useState<Block | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
-  // Add / edit form (collapsible, at the top).
-  const [formOpen, setFormOpen] = useState(false);
+  // Add / edit form (open/close + auto-scroll via the shared hook).
+  const { open: formOpen, formRef, openForm, closeForm: collapseForm, scrollFormIntoView } = useCollapsibleForm();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [fDay, setFDay] = useState("Monday");
   const [fStart, setFStart] = useState("09:00");
@@ -146,7 +148,6 @@ export default function SchedulePage() {
   const [notice, setNotice] = useState("");
 
   const pending = useRef<Map<string, { item: Block; timeout: number }>>(new Map());
-  const formRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     (async () => {
@@ -165,11 +166,6 @@ export default function SchedulePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Bring the form into view when it opens.
-  useEffect(() => {
-    if (formOpen) formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [formOpen]);
-
   const courseById = new Map(courses.map((c) => [c.id, c]));
   // Live subject label: prefer the current course name, fall back to the stored
   // text (legacy rows created before the course link).
@@ -187,13 +183,13 @@ export default function SchedulePage() {
     setEditingId(null);
     setNotice("");
     if (courses.length) setFCourse(courses[0].id);
-    setFormOpen(true);
+    openForm();
   }
 
   function closeForm() {
     setEditingId(null);
     setNotice("");
-    setFormOpen(false);
+    collapseForm();
   }
 
   function editFromDetail() {
@@ -207,7 +203,8 @@ export default function SchedulePage() {
     setFCourse(b.course_id ?? (courses[0]?.id ?? ""));
     setFType(b.type);
     setNotice("");
-    setFormOpen(true);
+    if (!formOpen) openForm();
+    else scrollFormIntoView();
   }
 
   async function submit() {
@@ -243,6 +240,7 @@ export default function SchedulePage() {
       const { data, error } = await supabase.from("schedule_blocks").insert({ user_id: userId, ...payload }).select(BLOCK_COLS).single();
       if (error || !data) { setNotice("Could not save — please try again."); return; }
       setBlocks((bs) => [...bs, data as Block]);
+      scrollFormIntoView();
       // Keep the form open with the same subject/type for quick repeat entry.
     }
   }
@@ -288,51 +286,20 @@ export default function SchedulePage() {
 
   return (
     <div className="page active">
-      <div className="page-header">
-        <h1>Class Schedule</h1>
-        <p>Your weekly academic timetable</p>
-      </div>
+      <PageHeader
+        icon={<CalendarDays size={22} />}
+        title="Class Schedule"
+        subtitle="Your weekly academic timetable"
+        actions={!formOpen ? (
+          <Button className="k-desktop-only" onClick={openAdd}>
+            <Plus size={16} /> Add Class
+          </Button>
+        ) : undefined}
+      />
 
-      {/* ADD / EDIT — a plain button when collapsed, the full form when expanded */}
-      {!formOpen && (
-        <button className="btn-add" onClick={openAdd} style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", marginBottom: "1rem" }}>
-          <Plus size={16} /> Add Class
-        </button>
-      )}
-
-      {formOpen && (
-        <div className="form-section" ref={formRef} style={{ marginBottom: "1rem", scrollMarginTop: "1rem" }}>
-          <h3>{editingId ? "Edit Class" : "Add Class"}</h3>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: "0.65rem", alignItems: "end" }}>
-            <div className="field-group"><div className="field-label">Day</div>
-              <select className="field-select" value={fDay} onChange={(e) => setFDay(e.target.value)} style={{ fontSize: "0.82rem", padding: "0.45rem" }}>
-                {DAYS.map((d) => <option key={d}>{d}</option>)}
-              </select>
-            </div>
-            <div className="field-group"><div className="field-label">Subject</div>
-              <select className="field-select" value={fCourse} onChange={(e) => { setFCourse(e.target.value); if (notice) setNotice(""); }} style={{ fontSize: "0.82rem", padding: "0.45rem" }}>
-                {courses.length ? courses.map((c) => <option key={c.id} value={c.id}>{courseLabel(c)}</option>) : <option value="">Add a course first</option>}
-              </select>
-            </div>
-            <div className="field-group"><div className="field-label">Start</div><input className="field-input" type="time" value={fStart} onChange={(e) => setFStart(e.target.value)} style={{ fontSize: "0.82rem", padding: "0.45rem" }} /></div>
-            <div className="field-group"><div className="field-label">End</div><input className="field-input" type="time" value={fEnd} onChange={(e) => setFEnd(e.target.value)} style={{ fontSize: "0.82rem", padding: "0.45rem" }} /></div>
-            <div className="field-group"><div className="field-label">Type</div>
-              <select className="field-select" value={fType} onChange={(e) => setFType(e.target.value)} style={{ fontSize: "0.82rem", padding: "0.45rem" }}>
-                {TYPES.map((t) => <option key={t.v} value={t.v}>{t.label}</option>)}
-              </select>
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap", marginTop: "0.9rem" }}>
-            <button className="btn-add" onClick={submit}>{editingId ? "Save Changes" : "+ Add Class"}</button>
-            <button className="btn-outline" onClick={closeForm} style={{ padding: "0.5rem 1rem" }}>{editingId ? "Cancel" : "Done"}</button>
-            {notice && <span style={{ fontSize: "0.82rem", color: "var(--terracotta-dark)" }}>{notice}</span>}
-          </div>
-        </div>
-      )}
-
-      <div className="card" style={{ marginBottom: "1rem" }}>
+      <Card style={{ marginBottom: "1rem" }}>
         <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginBottom: "0.75rem" }}>
-          {loading ? "Loading your schedule…" : hasBlocks ? "Tap a class to edit or remove it." : "No classes yet — add your first one above."}
+          {loading ? "Loading your schedule…" : hasBlocks ? "Tap a class to edit or remove it." : "No classes yet — add your first one below."}
         </div>
 
         {/* MOBILE — day agenda (shown/hidden by CSS to avoid hydration flip) */}
@@ -411,7 +378,7 @@ export default function SchedulePage() {
               })}
             </div>
         </div>
-      </div>
+      </Card>
 
       {/* LEGEND */}
       <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", fontSize: "0.72rem" }}>
@@ -421,6 +388,45 @@ export default function SchedulePage() {
           </span>
         ))}
       </div>
+
+      {/* Mobile: the "New" action sits at the bottom-left of the list. */}
+      {!formOpen && (
+        <div className="k-mobile-only k-mobile-add">
+          <Button onClick={openAdd}><Plus size={16} /> Add Class</Button>
+        </div>
+      )}
+
+      {/* ADD / EDIT CLASS */}
+      {formOpen && (
+        <div ref={formRef} style={{ marginTop: "1rem", scrollMarginTop: "1rem" }}>
+          <Card title={editingId ? "Edit Class" : "Add Class"} icon={<CalendarDays size={20} />}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: "0.75rem", alignItems: "end" }}>
+              <Field label="Day" htmlFor="s-day">
+                <Select id="s-day" value={fDay} onChange={(e) => setFDay(e.target.value)}>
+                  {DAYS.map((d) => <option key={d}>{d}</option>)}
+                </Select>
+              </Field>
+              <Field label="Subject" htmlFor="s-course">
+                <Select id="s-course" value={fCourse} onChange={(e) => { setFCourse(e.target.value); if (notice) setNotice(""); }}>
+                  {courses.length ? courses.map((c) => <option key={c.id} value={c.id}>{courseLabel(c)}</option>) : <option value="">Add a course first</option>}
+                </Select>
+              </Field>
+              <Field label="Start" htmlFor="s-start"><Input id="s-start" type="time" value={fStart} onChange={(e) => setFStart(e.target.value)} /></Field>
+              <Field label="End" htmlFor="s-end"><Input id="s-end" type="time" value={fEnd} onChange={(e) => setFEnd(e.target.value)} /></Field>
+              <Field label="Type" htmlFor="s-type">
+                <Select id="s-type" value={fType} onChange={(e) => setFType(e.target.value)}>
+                  {TYPES.map((t) => <option key={t.v} value={t.v}>{t.label}</option>)}
+                </Select>
+              </Field>
+            </div>
+            <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap", marginTop: "1.1rem" }}>
+              <Button onClick={submit}>{editingId ? "Save Changes" : "Add Class"}</Button>
+              <Button variant="outline" onClick={closeForm}>{editingId ? "Cancel" : "Done"}</Button>
+              {notice && <span style={{ fontSize: "0.82rem", color: "var(--terracotta-dark)" }}>{notice}</span>}
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* DETAIL — dialog on desktop, bottom sheet on mobile */}
       <DetailSheet open={detailOpen} onOpenChange={setDetailOpen} title={detail ? blockLabel(detail) : "Class"}>

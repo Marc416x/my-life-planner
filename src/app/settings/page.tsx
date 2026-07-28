@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import Link from "next/link";
 import { MODES, MODE_LABELS, applyMode, getStoredMode, type Mode } from "@/lib/theme";
-import { Sun, Moon, User, Bell, type LucideIcon } from "lucide-react";
+import { Sun, Moon, User, Bell, HelpCircle, ChevronRight, type LucideIcon } from "lucide-react";
 import { useProfile } from "@/components/profile-provider";
 import {
   permissionState,
@@ -336,6 +337,24 @@ export default function SettingsPage() {
           Saved on this device. (The 16 colour palettes come in a later pass.)
         </div>
       </div>
+
+      <Link
+        href="/help"
+        className="form-section"
+        style={{
+          display: "flex", alignItems: "center", gap: "0.7rem",
+          textDecoration: "none", color: "inherit", cursor: "pointer",
+        }}
+      >
+        <HelpCircle size={20} style={{ color: "var(--terracotta)", flexShrink: 0 }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>Help &amp; Guide</div>
+          <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+            How levels, streaks and more work
+          </div>
+        </div>
+        <ChevronRight size={18} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+      </Link>
     </div>
   );
 }

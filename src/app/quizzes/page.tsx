@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Clock, Trash2, ChevronDown, Plus, ClipboardList } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/toast-provider";
+import { useCollapsibleForm } from "@/lib/use-collapsible-form";
+import { PageHeader, Card, StatCard, Field, Input, Select, Textarea, Button, EmptyState } from "@/components/kit";
 
 type Course = { id: string; name: string };
 
@@ -49,8 +51,8 @@ export default function QuizzesPage() {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Add-quiz form state.
-  const [formOpen, setFormOpen] = useState(false);
+  // Add-quiz form (open/close + auto-scroll via the shared hook).
+  const { open: formOpen, formRef, openForm, closeForm: collapseForm, scrollFormIntoView } = useCollapsibleForm();
   const [fCourse, setFCourse] = useState("");
   const [fName, setFName] = useState("");
   const [fDate, setFDate] = useState("");
@@ -92,6 +94,11 @@ export default function QuizzesPage() {
   const timed = quizzes.filter((q) => q.time_min != null);
   const avgTime = timed.length ? Math.round(timed.reduce((s, q) => s + (q.time_min as number), 0) / timed.length) : null;
 
+  function openAdd() {
+    setFormError("");
+    openForm();
+  }
+
   async function addQuiz() {
     if (!userId) return;
     if (!fCourse) { setFormError("Add a course first."); return; }
@@ -124,6 +131,7 @@ export default function QuizzesPage() {
     setFTime("");
     setFTopics("");
     setFNotes("");
+    scrollFormIntoView();
   }
 
   function requestDelete(q: Quiz) {
@@ -148,81 +156,34 @@ export default function QuizzesPage() {
 
   return (
     <div className="page active">
-      <div className="page-header">
-        <h1>Quizzes</h1>
-        <p>Track your quiz performance across all courses</p>
-      </div>
+      <PageHeader
+        icon={<ClipboardList size={22} />}
+        title="Quizzes"
+        subtitle="Track your quiz performance across all courses"
+        actions={!formOpen ? (
+          <Button className="k-desktop-only" onClick={openAdd}>
+            <Plus size={16} /> New Quiz
+          </Button>
+        ) : undefined}
+      />
 
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-label">Quizzes Recorded</div>
-          <div className="stat-val">{quizzes.length}</div>
-          <div className="stat-sub">{scored.length} with a score</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Average Score</div>
-          <div className="stat-val">{avgPct != null ? `${avgPct}%` : "—"}</div>
-          <div className="stat-sub">Across all attempts</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Best Score</div>
-          <div className="stat-val">{bestPct != null ? `${bestPct}%` : "—"}</div>
-          <div className="stat-sub">Your top result</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Avg Time</div>
-          <div className="stat-val">{avgTime != null ? `${avgTime}m` : "—"}</div>
-          <div className="stat-sub">Per attempt</div>
-        </div>
-      </div>
-
-      <div className="form-section">
-        <button
-          onClick={() => setFormOpen((o) => !o)}
-          aria-expanded={formOpen}
-          style={{ background: "none", border: "none", cursor: "pointer", padding: 0, width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem", color: "inherit", textAlign: "left" }}
-        >
-          <span style={{ display: "flex", alignItems: "center", gap: "0.45rem", fontFamily: "var(--font-caveat), cursive", fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)" }}>
-            {formOpen ? <ClipboardList size={18} /> : <Plus size={18} />} Add Quiz Result
-          </span>
-          <ChevronDown size={18} style={{ transition: "transform 0.15s", transform: formOpen ? "rotate(180deg)" : "none", color: "var(--text-muted)" }} />
-        </button>
-
-        {formOpen && (
-        <div style={{ marginTop: "0.85rem" }}>
-        <div className="input-row three">
-          <div className="field-group"><div className="field-label">Course</div>
-            <select className="field-select" value={fCourse} onChange={(e) => { setFCourse(e.target.value); if (formError) setFormError(""); }}>
-              {courses.length ? courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>) : <option value="">Add a course first</option>}
-            </select>
-          </div>
-          <div className="field-group"><div className="field-label">Quiz Name</div><input className="field-input" value={fName} onChange={(e) => { setFName(e.target.value); if (formError) setFormError(""); }} placeholder="e.g., Quiz 3 — Antibiotics" /></div>
-          <div className="field-group"><div className="field-label">Date Taken</div><input className="field-input" type="date" value={fDate} onChange={(e) => setFDate(e.target.value)} /></div>
-        </div>
-        <div className="input-row three">
-          <div className="field-group"><div className="field-label">Score</div><input className="field-input" type="number" min="0" value={fScore} onChange={(e) => { setFScore(e.target.value); if (formError) setFormError(""); }} placeholder="85" /></div>
-          <div className="field-group"><div className="field-label">Max Score</div><input className="field-input" type="number" min="0" value={fMax} onChange={(e) => { setFMax(e.target.value); if (formError) setFormError(""); }} placeholder="100" /></div>
-          <div className="field-group"><div className="field-label">Time Taken (min)</div><input className="field-input" type="number" min="0" value={fTime} onChange={(e) => setFTime(e.target.value)} placeholder="30" /></div>
-        </div>
-        <div className="input-row">
-          <div className="field-group"><div className="field-label">Topics Covered</div><input className="field-input" value={fTopics} onChange={(e) => setFTopics(e.target.value)} placeholder="Antibiotics, Dosage, Side effects" /></div>
-          <div className="field-group"><div className="field-label">Difficulty</div><select className="field-select" value={fDifficulty} onChange={(e) => setFDifficulty(e.target.value)}>{DIFFICULTIES.map((d) => <option key={d}>{d}</option>)}</select></div>
-        </div>
-        <div className="input-row single"><div className="field-group"><div className="field-label">Notes</div><textarea className="field-textarea" value={fNotes} onChange={(e) => setFNotes(e.target.value)} placeholder="What was challenging? What went well?" /></div></div>
-        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
-          <button className="btn-add" onClick={(e) => { e.currentTarget.blur(); addQuiz(); }}>+ Add Quiz</button>
-          {formError && <span style={{ color: "var(--terracotta-dark)", fontSize: "0.82rem" }}>{formError}</span>}
-        </div>
-        </div>
-        )}
+      <div className="k-stats-grid" style={{ marginBottom: "1.5rem" }}>
+        <StatCard tone="terracotta" label="Quizzes Recorded" value={quizzes.length} sub={`${scored.length} with a score`} />
+        <StatCard tone="olive" label="Average Score" value={avgPct != null ? `${avgPct}%` : "—"} sub="Across all attempts" />
+        <StatCard tone="forest" label="Best Score" value={bestPct != null ? `${bestPct}%` : "—"} sub="Your top result" />
+        <StatCard tone="ochre" label="Avg Time" value={avgTime != null ? `${avgTime}m` : "—"} sub="Per attempt" />
       </div>
 
       {loading ? (
         <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", padding: "1rem", fontStyle: "italic", textAlign: "center" }}>Loading…</div>
       ) : quizzes.length === 0 ? (
-        <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", padding: "2rem 1rem", fontStyle: "italic", textAlign: "center" }}>
-          No quizzes yet — record your first result above to start tracking your practice performance.
-        </div>
+        <Card>
+          <EmptyState
+            icon={<ClipboardList size={26} />}
+            title="No quizzes yet"
+            description="Record your first result to start tracking your practice performance."
+          />
+        </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {quizzes.map((q) => {
@@ -236,7 +197,7 @@ export default function QuizzesPage() {
                 onClick={() => hasDetail && setExpandedId(expanded ? null : q.id)}
                 role={hasDetail ? "button" : undefined}
                 aria-expanded={hasDetail ? expanded : undefined}
-                style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "1.25rem", cursor: hasDetail ? "pointer" : "default" }}
+                style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "var(--s-radius-sm)", padding: "1.25rem", cursor: hasDetail ? "pointer" : "default" }}
               >
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "0.75rem" }}>
                   <div>
@@ -282,6 +243,47 @@ export default function QuizzesPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Mobile: the "New" action sits at the bottom-left of the list. */}
+      {!formOpen && (
+        <div className="k-mobile-only k-mobile-add">
+          <Button onClick={openAdd}><Plus size={16} /> New Quiz</Button>
+        </div>
+      )}
+
+      {/* ADD QUIZ RESULT */}
+      {formOpen && (
+        <div ref={formRef} style={{ scrollMarginTop: "1rem", marginTop: "1.5rem" }}>
+          <Card title="Add Quiz Result" icon={<ClipboardList size={20} />}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "0.75rem" }}>
+              <Field label="Course" htmlFor="q-course">
+                <Select id="q-course" value={fCourse} onChange={(e) => { setFCourse(e.target.value); if (formError) setFormError(""); }}>
+                  {courses.length ? courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>) : <option value="">Add a course first</option>}
+                </Select>
+              </Field>
+              <Field label="Quiz Name" htmlFor="q-name"><Input id="q-name" value={fName} onChange={(e) => { setFName(e.target.value); if (formError) setFormError(""); }} placeholder="e.g., Quiz 3 — Antibiotics" /></Field>
+              <Field label="Date Taken" htmlFor="q-date"><Input id="q-date" type="date" value={fDate} onChange={(e) => setFDate(e.target.value)} /></Field>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "0.75rem", marginTop: "0.75rem" }}>
+              <Field label="Score" htmlFor="q-score"><Input id="q-score" type="number" min="0" value={fScore} onChange={(e) => { setFScore(e.target.value); if (formError) setFormError(""); }} placeholder="85" /></Field>
+              <Field label="Max Score" htmlFor="q-max"><Input id="q-max" type="number" min="0" value={fMax} onChange={(e) => { setFMax(e.target.value); if (formError) setFormError(""); }} placeholder="100" /></Field>
+              <Field label="Time Taken (min)" htmlFor="q-time"><Input id="q-time" type="number" min="0" value={fTime} onChange={(e) => setFTime(e.target.value)} placeholder="30" /></Field>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: "0.75rem", marginTop: "0.75rem" }}>
+              <Field label="Topics Covered" htmlFor="q-topics"><Input id="q-topics" value={fTopics} onChange={(e) => setFTopics(e.target.value)} placeholder="Antibiotics, Dosage, Side effects" /></Field>
+              <Field label="Difficulty" htmlFor="q-diff"><Select id="q-diff" value={fDifficulty} onChange={(e) => setFDifficulty(e.target.value)}>{DIFFICULTIES.map((d) => <option key={d}>{d}</option>)}</Select></Field>
+            </div>
+            <div style={{ marginTop: "0.75rem" }}>
+              <Field label="Notes" htmlFor="q-notes"><Textarea id="q-notes" value={fNotes} onChange={(e) => setFNotes(e.target.value)} placeholder="What was challenging? What went well?" /></Field>
+            </div>
+            <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap", marginTop: "1.1rem" }}>
+              <Button onClick={(e) => { e.currentTarget.blur(); addQuiz(); }}>Add Quiz</Button>
+              <Button variant="outline" onClick={collapseForm}>Done</Button>
+              {formError && <span style={{ color: "var(--terracotta-dark)", fontSize: "0.82rem" }}>{formError}</span>}
+            </div>
+          </Card>
         </div>
       )}
     </div>
