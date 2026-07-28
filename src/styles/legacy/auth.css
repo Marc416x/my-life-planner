@@ -343,6 +343,6 @@ body.mode-dark .auth-btn-google {
   .auth-split { grid-template-columns: 1fr; }
   .auth-hero { padding: 1.7rem 1.5rem; }
   .auth-hero__tagline { font-size: 1.7rem; margin-top: 0.8rem; }
-  .auth-features, .auth-hero__quote { display: none; }
+  .auth-hero__sub, .auth-features, .auth-hero__quote { display: none; }
   .auth-form-side { padding: 1.9rem 1.4rem 2.6rem; }
 }
