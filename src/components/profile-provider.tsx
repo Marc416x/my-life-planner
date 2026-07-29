@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { createClient } from "@/lib/supabase/client";
 import { currentStreak, longestStreak, toISODate } from "@/lib/streak";
 import { levelInfo, type LevelInfo } from "@/lib/level";
+import { allArchivedTerms, type TermCount, type TermRow } from "@/lib/term";
 
 type ProfileCtx = {
   name: string;
@@ -17,6 +18,15 @@ type ProfileCtx = {
   best: number;
   /** Discipline Level derived from `best` (tier, progress, next tier…). */
   level: LevelInfo;
+  /** Pro subscription flag (`profiles.is_pro`) — unlocks Premium features. */
+  isPro: boolean;
+  /** Current academic term (`profiles.year`). */
+  currentTerm: string | null;
+  /** Past terms the user has data in — powers the global term picker in Settings. */
+  archivedTerms: TermCount[];
+  /** Term currently being viewed app-wide: null = current, else a past term (read-only). */
+  viewTerm: string | null;
+  setViewTerm: (term: string | null) => void;
   loading: boolean;
   refresh: () => Promise<void>;
   /** Mark today as a study day (idempotent) and update the streak everywhere. */
@@ -31,6 +41,11 @@ const Ctx = createContext<ProfileCtx>({
   streak: 0,
   best: 0,
   level: levelInfo(0),
+  isPro: false,
+  currentTerm: null,
+  archivedTerms: [],
+  viewTerm: null,
+  setViewTerm: () => {},
   loading: true,
   refresh: async () => {},
   recordActivity: async () => {},
@@ -51,6 +66,13 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const [email, setEmail] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
   const [studyDays, setStudyDays] = useState<string[]>([]);
+  const [isPro, setIsPro] = useState(false);
+  const [currentTerm, setCurrentTerm] = useState<string | null>(null);
+  const [archivedTerms, setArchivedTerms] = useState<TermCount[]>([]);
+  // App-wide "which term am I viewing" — set from the Settings picker, read by
+  // every logging page. In-memory only, so it resets to the current term on a
+  // full reload (a safe default — you can't get stuck in an archived view).
+  const [viewTerm, setViewTerm] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
@@ -59,13 +81,22 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     setEmail(user?.email ?? "");
     setUserId(user?.id ?? null);
     if (user) {
-      const { data } = await supabase.from("profiles").select("name").eq("id", user.id).single();
+      const { data } = await supabase.from("profiles").select("name, is_pro, year").eq("id", user.id).single();
       setName(data?.name ?? "");
+      setIsPro(!!data?.is_pro);
+      const yr = (data?.year as string) ?? null;
+      setCurrentTerm(yr);
       const { data: days } = await supabase.from("study_days").select("day").eq("user_id", user.id);
       setStudyDays((days ?? []).map((r) => r.day as string));
+      const { data: termRows } = await supabase.rpc("user_terms");
+      setArchivedTerms(allArchivedTerms((termRows as TermRow[]) ?? [], yr));
     } else {
       setName("");
+      setIsPro(false);
       setStudyDays([]);
+      setCurrentTerm(null);
+      setArchivedTerms([]);
+      setViewTerm(null);
     }
     setLoading(false);
   }, []);
@@ -94,7 +125,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const level = useMemo(() => levelInfo(best), [best]);
 
   return (
-    <Ctx.Provider value={{ name, email, initials, studyDays, streak, best, level, loading, refresh, recordActivity }}>
+    <Ctx.Provider value={{ name, email, initials, studyDays, streak, best, level, isPro, currentTerm, archivedTerms, viewTerm, setViewTerm, loading, refresh, recordActivity }}>
       {children}
     </Ctx.Provider>
   );

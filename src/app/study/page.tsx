@@ -10,7 +10,10 @@ import { useProfile } from "@/components/profile-provider";
 import { useCollapsibleForm } from "@/lib/use-collapsible-form";
 import { toISODate } from "@/lib/streak";
 import { groupByDay, periodLabel, periodRange, type Granularity } from "@/lib/group-by-date";
+import { applyTermScope } from "@/lib/term";
 import { DetailSheet, DetailRow } from "@/components/detail-sheet";
+import { ArchiveBanner } from "@/components/term-scope";
+import { ProUpsell } from "@/components/pro-gate";
 import { PageHeader, Card, StatCard, Field, Input, Select, Textarea, Button, EmptyState, DateGroupHeader, PeriodRow } from "@/components/kit";
 
 type Period = { period_start: string; cnt: number; total_min: number };
@@ -76,7 +79,7 @@ function weekStartISO(): string {
 export default function StudyPage() {
   const supabase = createClient();
   const toast = useToast();
-  const { streak, recordActivity } = useProfile();
+  const { streak, recordActivity, isPro, viewTerm } = useProfile();
 
   const [userId, setUserId] = useState<string | null>(null);
   const [term, setTerm] = useState<string | null>(null);
@@ -128,22 +131,28 @@ export default function StudyPage() {
       setUserId(user?.id ?? null);
       if (!user) { setLoading(false); return; }
 
-      const [{ data: profile }, { data: courseRows }, listRes, { data: week }] = await Promise.all([
-        supabase.from("profiles").select("year").eq("id", user.id).single(),
+      // Profile first — its `year` is the current term the other queries filter on.
+      const { data: profile } = await supabase.from("profiles").select("year").eq("id", user.id).single();
+      const yr = (profile?.year as string) ?? null;
+      setTerm(yr);
+
+      const [{ data: courseRows }, listRes, { data: week }] = await Promise.all([
         supabase.from("courses").select("id, name").order("created_at", { ascending: true }),
-        supabase
-          .from("study_sessions")
-          .select("id, course_id, topic, duration_min, focus, notes, session_date, started_at", { count: "exact" })
-          .order("session_date", { ascending: false })
-          .order("created_at", { ascending: false })
-          .range(0, PAGE - 1),
-        supabase
-          .from("study_sessions")
-          .select("duration_min, focus, course_id")
-          .gte("session_date", wkStart),
+        applyTermScope(
+          supabase
+            .from("study_sessions")
+            .select("id, course_id, topic, duration_min, focus, notes, session_date, started_at", { count: "exact" })
+            .order("session_date", { ascending: false })
+            .order("created_at", { ascending: false })
+            .range(0, PAGE - 1),
+          viewTerm, yr,
+        ),
+        applyTermScope(
+          supabase.from("study_sessions").select("duration_min, focus, course_id").gte("session_date", wkStart),
+          null, yr,
+        ),
       ]);
 
-      setTerm((profile?.year as string) ?? null);
       const cs = (courseRows as Course[]) ?? [];
       setCourses(cs);
       if (cs.length) setTCourse(cs[0].id);
@@ -178,11 +187,11 @@ export default function StudyPage() {
   byCourse.forEach((v, k) => { if (v > topMin) { topMin = v; topCourseId = k; } });
 
   async function reloadWeek(uid: string) {
-    const { data } = await supabase
-      .from("study_sessions")
-      .select("duration_min, focus, course_id")
-      .eq("user_id", uid)
-      .gte("session_date", wkStart);
+    // Week stats only ever show in the current-term view, so always scope to current.
+    const { data } = await applyTermScope(
+      supabase.from("study_sessions").select("duration_min, focus, course_id").eq("user_id", uid).gte("session_date", wkStart),
+      null, term,
+    );
     setWeekRows(data ?? []);
   }
 
@@ -299,12 +308,15 @@ export default function StudyPage() {
     const next = page + 1;
     setLoadingMore(true);
     const from = next * PAGE;
-    const { data } = await supabase
-      .from("study_sessions")
-      .select("id, course_id, topic, duration_min, focus, notes, session_date, started_at")
-      .order("session_date", { ascending: false })
-      .order("created_at", { ascending: false })
-      .range(from, from + PAGE - 1);
+    const { data } = await applyTermScope(
+      supabase
+        .from("study_sessions")
+        .select("id, course_id, topic, duration_min, focus, notes, session_date, started_at")
+        .order("session_date", { ascending: false })
+        .order("created_at", { ascending: false })
+        .range(from, from + PAGE - 1),
+      viewTerm, term,
+    );
     setSessions((xs) => [...xs, ...((data as Session[]) ?? [])]);
     setPage(next);
     setLoadingMore(false);
@@ -338,7 +350,7 @@ export default function StudyPage() {
   // ---- Group-by: Day / Week / Month ----
   async function loadPeriods(g: "week" | "month") {
     setPeriodsLoading(true);
-    const { data } = await supabase.rpc("study_session_periods", { p_gran: g });
+    const { data } = await supabase.rpc("study_session_periods", { p_gran: g, p_scope: viewTerm });
     setPeriods((data as Period[]) ?? []);
     setPeriodsLoading(false);
   }
@@ -360,15 +372,23 @@ export default function StudyPage() {
     });
     if (!periodItems[key] && granularity !== "day") {
       const { start, end } = periodRange(key, granularity);
-      const { data } = await supabase
-        .from("study_sessions")
-        .select("id, course_id, topic, duration_min, focus, notes, session_date, started_at")
-        .gte("session_date", start).lte("session_date", end)
-        .order("session_date", { ascending: false })
-        .order("created_at", { ascending: false });
+      const { data } = await applyTermScope(
+        supabase
+          .from("study_sessions")
+          .select("id, course_id, topic, duration_min, focus, notes, session_date, started_at")
+          .gte("session_date", start).lte("session_date", end)
+          .order("session_date", { ascending: false })
+          .order("created_at", { ascending: false }),
+        viewTerm, term,
+      );
       setPeriodItems((prev) => ({ ...prev, [key]: (data as Session[]) ?? [] }));
     }
   }
+
+  // Viewing an archived term (set globally in Settings) is read-only; non-Pro
+  // users see the upsell instead.
+  const readOnly = viewTerm !== null;
+  const locked = readOnly && !isPro;
 
   function renderSessionCard(s: Session) {
     return (
@@ -388,7 +408,7 @@ export default function StudyPage() {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexShrink: 0 }}>
           <div style={{ fontFamily: "var(--font-caveat), cursive", fontSize: "1.5rem", fontWeight: 700, color: "var(--terracotta)" }}>{fmtDuration(s.duration_min)}</div>
-          <button onClick={(e) => { e.stopPropagation(); requestDelete(s); }} aria-label="Delete session" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "inline-flex", padding: 2 }}><Trash2 size={14} /></button>
+          {!readOnly && <button onClick={(e) => { e.stopPropagation(); requestDelete(s); }} aria-label="Delete session" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "inline-flex", padding: 2 }}><Trash2 size={14} /></button>}
         </div>
       </div>
     );
@@ -426,21 +446,26 @@ export default function StudyPage() {
         icon={<Timer size={22} />}
         title="Study Sessions"
         subtitle="Time your focus, then log it — every session builds your streak."
-        actions={!formOpen ? (
+        actions={(!formOpen && !readOnly) ? (
           <Button className="k-desktop-only" variant="outline" onClick={openManual}>
             <Plus size={16} /> Log a past session
           </Button>
         ) : undefined}
       />
 
-      <div className="k-stats-grid" style={{ marginBottom: "1.5rem" }}>
-        <StatCard tone="terracotta" label="This Week" value={fmtDuration(weekMin)} sub={`across ${weekCount} ${weekCount === 1 ? "session" : "sessions"}`} icon={<Clock size={18} />} />
-        <StatCard tone="olive" label="Sessions" value={weekCount} sub="logged this week" icon={<Timer size={18} />} />
-        <StatCard tone="forest" label="Avg Focus" value={avgFocus != null ? `${avgFocus}/5` : "—"} sub="this week" icon={<Target size={18} />} />
-        <StatCard tone="ochre" label="Current Streak" value={`${streak} ${streak === 1 ? "day" : "days"}`} sub={topCourseId ? `Most time: ${courseName(topCourseId)}` : "Keep showing up"} icon={<Flame size={18} />} />
-      </div>
+      {readOnly && <ArchiveBanner term={viewTerm} />}
 
-      {/* FOCUS TIMER */}
+      {!readOnly && (
+        <div className="k-stats-grid" style={{ marginBottom: "1.5rem" }}>
+          <StatCard tone="terracotta" label="This Week" value={fmtDuration(weekMin)} sub={`across ${weekCount} ${weekCount === 1 ? "session" : "sessions"}`} icon={<Clock size={18} />} />
+          <StatCard tone="olive" label="Sessions" value={weekCount} sub="logged this week" icon={<Timer size={18} />} />
+          <StatCard tone="forest" label="Avg Focus" value={avgFocus != null ? `${avgFocus}/5` : "—"} sub="this week" icon={<Target size={18} />} />
+          <StatCard tone="ochre" label="Current Streak" value={`${streak} ${streak === 1 ? "day" : "days"}`} sub={topCourseId ? `Most time: ${courseName(topCourseId)}` : "Keep showing up"} icon={<Flame size={18} />} />
+        </div>
+      )}
+
+      {/* FOCUS TIMER — current term only */}
+      {!readOnly && (
       <Card title="Focus Timer" icon={<Timer size={20} />} subtitle="Start when you begin studying; Save to log the time." style={{ marginBottom: "1.5rem" }}>
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "1.25rem" }}>
           <div style={{ fontFamily: "var(--font-caveat), cursive", fontSize: "3.25rem", fontWeight: 700, lineHeight: 1, color: running ? "var(--terracotta)" : "var(--text-primary, var(--text))", fontVariantNumeric: "tabular-nums", minWidth: "clamp(120px, 30vw, 190px)" }}>
@@ -467,16 +492,23 @@ export default function StudyPage() {
           <Field label="Focus" htmlFor="t-focus"><Select id="t-focus" value={tFocus} onChange={(e) => setTFocus(Number(e.target.value))}>{FOCUS.map((f) => <option key={f.v} value={f.v}>{f.label}</option>)}</Select></Field>
         </div>
       </Card>
+      )}
 
       {/* RECENT SESSIONS */}
-      {loading ? (
+      {locked ? (
+        <ProUpsell
+          feature="The term archive"
+          blurb={`Revisit ${viewTerm} as read-only history — your past study sessions stay with you as you advance.`}
+          perks={["Browse every past term", "Read-only, never lost", "Week & month roll-ups per term"]}
+        />
+      ) : loading ? (
         <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", padding: "1rem", fontStyle: "italic", textAlign: "center" }}>Loading…</div>
       ) : total === 0 ? (
         <Card>
           <EmptyState
             icon={<Timer size={26} />}
-            title="No study sessions yet"
-            description="Start the focus timer above, or log a past session, to begin tracking your study time."
+            title={readOnly ? "Nothing logged this term" : "No study sessions yet"}
+            description={readOnly ? "There are no study sessions recorded for this term." : "Start the focus timer above, or log a past session, to begin tracking your study time."}
           />
         </Card>
       ) : (
@@ -518,14 +550,14 @@ export default function StudyPage() {
       )}
 
       {/* Mobile: the "log a past session" action sits below the list. */}
-      {!formOpen && (
+      {!formOpen && !readOnly && (
         <div className="k-mobile-only k-mobile-add">
           <Button variant="outline" onClick={openManual}><Plus size={16} /> Log a past session</Button>
         </div>
       )}
 
       {/* MANUAL LOG */}
-      {formOpen && (
+      {formOpen && !readOnly && (
         <div ref={formRef} style={{ scrollMarginTop: "1rem", marginTop: "1.5rem" }}>
           <Card title={editingId ? "Edit session" : "Log a past session"} icon={editingId ? <Pencil size={20} /> : <Plus size={20} />}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "0.75rem" }}>
@@ -571,9 +603,11 @@ export default function StudyPage() {
             {detail.notes
               ? <DetailRow label="Notes">{detail.notes}</DetailRow>
               : <div style={{ fontSize: "0.82rem", color: "var(--text-muted)", fontStyle: "italic" }}>No notes for this session.</div>}
-            <div style={{ marginTop: "0.25rem" }}>
-              <Button size="sm" variant="outline" onClick={() => openEditSession(detail)}><Pencil size={13} /> Edit</Button>
-            </div>
+            {!readOnly && (
+              <div style={{ marginTop: "0.25rem" }}>
+                <Button size="sm" variant="outline" onClick={() => openEditSession(detail)}><Pencil size={13} /> Edit</Button>
+              </div>
+            )}
           </div>
         )}
       </DetailSheet>

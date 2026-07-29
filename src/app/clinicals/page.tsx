@@ -4,9 +4,20 @@ import { useEffect, useRef, useState } from "react";
 import { Target, PenLine, Plus, Pencil, Trash2, ChevronRight, FileText, StickyNote, Calendar } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/toast-provider";
+import { useProfile } from "@/components/profile-provider";
 import { useCollapsibleForm } from "@/lib/use-collapsible-form";
+import { groupByDay, groupByPeriod, periodLabel, type Granularity } from "@/lib/group-by-date";
+import { applyTermScope } from "@/lib/term";
 import { DetailSheet } from "@/components/detail-sheet";
-import { PageHeader, Card, StatCard, Section, Field, Input, Select, Textarea, Button, EmptyState } from "@/components/kit";
+import { ArchiveBanner } from "@/components/term-scope";
+import { ProUpsell } from "@/components/pro-gate";
+import { PageHeader, Card, StatCard, Section, Field, Input, Select, Textarea, Button, EmptyState, DateGroupHeader, PeriodRow } from "@/components/kit";
+
+const GRANS: { v: Granularity; label: string }[] = [
+  { v: "day", label: "Day" },
+  { v: "week", label: "Week" },
+  { v: "month", label: "Month" },
+];
 
 type ClinicalSession = {
   id: string;
@@ -77,12 +88,13 @@ function DetailSection({ label, icon: Icon, value }: { label: string; icon: Icon
 // Dialog or the mobile Drawer's scroll area. The title is rendered separately by
 // each surface so it can live in the Drawer's fixed drag-area header.
 function DetailContent({
-  session, onEdit, onDelete, onClose,
+  session, onEdit, onDelete, onClose, readOnly,
 }: {
   session: ClinicalSession;
   onEdit: () => void;
   onDelete: () => void;
   onClose: () => void;
+  readOnly?: boolean;
 }) {
   const badge = difficultyStyle(session.difficulty);
   const hasNotes = !!(session.goal || session.prep || session.reflections || session.takeaways);
@@ -102,8 +114,8 @@ function DetailContent({
       {!hasNotes && <div className="sheet-section-body" style={{ fontStyle: "italic", color: "var(--text-muted)" }}>No notes recorded for this session.</div>}
 
       <div className="sheet-actions">
-        <Button size="sm" onClick={onEdit}><Pencil size={14} /> Edit</Button>
-        <Button size="sm" variant="danger" onClick={onDelete}><Trash2 size={14} /> Delete</Button>
+        {!readOnly && <Button size="sm" onClick={onEdit}><Pencil size={14} /> Edit</Button>}
+        {!readOnly && <Button size="sm" variant="danger" onClick={onDelete}><Trash2 size={14} /> Delete</Button>}
         <Button size="sm" variant="outline" className="sheet-action-spacer" onClick={onClose}>Close</Button>
       </div>
     </>
@@ -113,15 +125,22 @@ function DetailContent({
 export default function ClinicalsPage() {
   const supabase = createClient();
   const toast = useToast();
+  const { isPro, viewTerm } = useProfile();
 
   const [sessions, setSessions] = useState<ClinicalSession[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
+  const [term, setTerm] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Detail view (dialog on desktop, bottom sheet on mobile). `detail` is kept
   // set through the close animation so the body stays rendered while it exits.
   const [detail, setDetail] = useState<ClinicalSession | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+
+  // Group-by (Day | Week | Month). The page holds its full history in memory, so
+  // week/month roll-ups are grouped client-side (exact totals, no extra query).
+  const [granularity, setGranularity] = useState<Granularity>("day");
+  const [openPeriods, setOpenPeriods] = useState<Set<string>>(new Set());
 
   // Add / edit form state. Open/close + auto-scroll handled by the shared hook.
   const { open: formOpen, formRef, openForm, closeForm: collapseForm, scrollFormIntoView } = useCollapsibleForm();
@@ -143,10 +162,15 @@ export default function ClinicalsPage() {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUserId(user?.id ?? null);
-      const { data } = await supabase
-        .from("clinical_sessions")
-        .select(CLIN_COLS)
-        .order("session_date", { ascending: false, nullsFirst: false });
+      if (!user) { setLoading(false); return; }
+      // Profile first — its `year` is the current term the session list filters on.
+      const { data: profile } = await supabase.from("profiles").select("year").eq("id", user.id).single();
+      const yr = (profile?.year as string) ?? null;
+      setTerm(yr);
+      const { data } = await applyTermScope(
+        supabase.from("clinical_sessions").select(CLIN_COLS).order("session_date", { ascending: false, nullsFirst: false }),
+        viewTerm, yr,
+      );
       setSessions(sortSessions((data as ClinicalSession[]) ?? []));
       setLoading(false);
     })();
@@ -222,7 +246,7 @@ export default function ClinicalsPage() {
       setSessions((xs) => sortSessions(xs.map((x) => (x.id === editingId ? (data as ClinicalSession) : x))));
       closeForm();
     } else {
-      const { data, error } = await supabase.from("clinical_sessions").insert({ user_id: userId, ...payload }).select(CLIN_COLS).single();
+      const { data, error } = await supabase.from("clinical_sessions").insert({ user_id: userId, term, ...payload }).select(CLIN_COLS).single();
       if (error || !data) { setFormError("Could not save — please try again."); return; }
       setSessions((xs) => sortSessions([...xs, data as ClinicalSession]));
       // Keep the rotation context (difficulty, supervisor, ward) for quick
@@ -282,79 +306,173 @@ export default function ClinicalsPage() {
   const avgDiffNum = diffVals.length ? diffVals.reduce((a, b) => a + b, 0) / diffVals.length : null;
   const avgDiffIdx = avgDiffNum != null ? Math.min(4, Math.max(1, Math.round(avgDiffNum))) : null;
 
+  // Viewing an archived term (set globally in Settings) is read-only; non-Pro
+  // users see the upsell instead.
+  const readOnly = viewTerm !== null;
+  const locked = readOnly && !isPro;
+
+  // ----- Group-by: Day / Week / Month (all in-memory) -----
+  function changeGranularity(g: Granularity) {
+    if (g === granularity) return;
+    setGranularity(g);
+    setOpenPeriods(new Set());
+  }
+  function togglePeriod(key: string) {
+    setOpenPeriods((prev) => {
+      const n = new Set(prev);
+      if (n.has(key)) n.delete(key); else n.add(key);
+      return n;
+    });
+  }
+
+  const datedSessions = sessions.filter((s) => s.session_date);
+  const undatedSessions = sessions.filter((s) => !s.session_date);
+
+  function groupSummary(list: ClinicalSession[]) {
+    const hrs = list.reduce((n, s) => n + (s.hours ?? 0), 0);
+    const n = list.length;
+    return `${n} ${n === 1 ? "session" : "sessions"}${hrs ? ` · ${fmtHours(hrs)}h` : ""}`;
+  }
+
+  function renderSessionCard(s: ClinicalSession) {
+    const badge = difficultyStyle(s.difficulty);
+    const meta = [
+      s.supervisor ? `Supervisor: ${s.supervisor}` : null,
+      s.hours != null ? `${fmtHours(s.hours)} hrs` : null,
+    ].filter(Boolean).join(" · ");
+    const hasNotes = !!(s.prep || s.reflections || s.takeaways);
+    return (
+      <button className="clinical-card" key={s.id} onClick={() => openDetail(s)}>
+        <div className="clinical-card-main">
+          <div className="clinical-name">{s.department || "Clinical Session"}</div>
+          {meta && <div className="clinical-meta">{meta}</div>}
+          {s.goal && <div className="clinical-goal">Goal: {s.goal}</div>}
+          {hasNotes && <div className="clinical-notes-hint"><FileText size={12} /> Notes &amp; reflections</div>}
+        </div>
+        <div className="clinical-aside">
+          {s.session_date && <div className="clinical-date">{formatDate(s.session_date)}</div>}
+          {s.difficulty && <span className="clinical-diff" style={{ background: badge.bg, color: badge.color }}>{s.difficulty}</span>}
+        </div>
+        <ChevronRight className="clinical-chevron" size={18} />
+      </button>
+    );
+  }
+
+  function renderDayGroups(list: ClinicalSession[]) {
+    const dated = list.filter((s) => s.session_date);
+    const undated = list.filter((s) => !s.session_date);
+    return (
+      <>
+        {groupByDay(dated, (s) => s.session_date as string).map((group) => (
+          <div key={group.key} style={{ marginBottom: "1.25rem" }}>
+            <DateGroupHeader label={group.label} summary={groupSummary(group.items)} />
+            {group.items.map(renderSessionCard)}
+          </div>
+        ))}
+        {undated.length > 0 && (
+          <div style={{ marginBottom: "1.25rem" }}>
+            <DateGroupHeader label="Undated" summary={groupSummary(undated)} />
+            {undated.map(renderSessionCard)}
+          </div>
+        )}
+      </>
+    );
+  }
+
+  const groupByControl = (
+    <div style={{ display: "flex", gap: "0.4rem", alignItems: "center", flexWrap: "wrap" }}>
+      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Group by</span>
+      {GRANS.map((g) => (
+        <Button key={g.v} size="sm" variant={granularity === g.v ? "primary" : "ghost"} onClick={() => changeGranularity(g.v)}>{g.label}</Button>
+      ))}
+    </div>
+  );
+
   return (
     <div className="page active">
       <PageHeader
         icon={<Target size={22} />}
         title="Clinicals"
         subtitle="Bridge the gap between theory and practice"
-        actions={!formOpen ? (
+        actions={(!formOpen && !readOnly) ? (
           <Button className="k-desktop-only" onClick={openAdd}>
             <Plus size={16} /> Log Session
           </Button>
         ) : undefined}
       />
 
-      {/* SUMMARY STATS — computed from the logged sessions */}
-      <div className="k-stats-grid" style={{ marginBottom: "1.5rem" }}>
-        <StatCard tone="terracotta" label="Total Clinical Hours" value={`${fmtHours(totalHours)}h`} />
-        <StatCard tone="olive" label="Sessions Completed" value={sessionCount} />
-        <StatCard tone="ochre" label="Avg Session Length" value={avgLength != null ? `${fmtHours(Math.round(avgLength * 10) / 10)}h` : "—"} />
-        <StatCard
-          tone="forest"
-          label="Avg Difficulty"
-          value={<span style={avgDiffIdx != null ? { color: difficultyStyle(DIFFICULTIES[avgDiffIdx - 1]).color } : undefined}>{avgDiffIdx != null ? DIFF_SHORT[avgDiffIdx - 1] : "—"}</span>}
-        />
-      </div>
+      {readOnly && <ArchiveBanner term={viewTerm} />}
+
+      {/* SUMMARY STATS — computed from the (term-scoped) logged sessions */}
+      {!locked && (
+        <div className="k-stats-grid" style={{ marginBottom: "1.5rem" }}>
+          <StatCard tone="terracotta" label="Total Clinical Hours" value={`${fmtHours(totalHours)}h`} />
+          <StatCard tone="olive" label="Sessions Completed" value={sessionCount} />
+          <StatCard tone="ochre" label="Avg Session Length" value={avgLength != null ? `${fmtHours(Math.round(avgLength * 10) / 10)}h` : "—"} />
+          <StatCard
+            tone="forest"
+            label="Avg Difficulty"
+            value={<span style={avgDiffIdx != null ? { color: difficultyStyle(DIFFICULTIES[avgDiffIdx - 1]).color } : undefined}>{avgDiffIdx != null ? DIFF_SHORT[avgDiffIdx - 1] : "—"}</span>}
+          />
+        </div>
+      )}
 
       {/* LOGGED SESSIONS — compact cards, click to open the detail view */}
       <Section title={<span style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem" }}><PenLine size={18} /> Logged Sessions</span>}>
-        {loading ? (
+        {locked ? (
+          <ProUpsell
+            feature="The term archive"
+            blurb={`Revisit your ${viewTerm} clinical sessions as read-only history — every logged hour and reflection stays with you.`}
+            perks={["Browse every past term", "Read-only, never lost", "Week & month roll-ups per term"]}
+          />
+        ) : loading ? (
           <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", padding: "1rem", fontStyle: "italic", textAlign: "center" }}>Loading…</div>
         ) : sessions.length === 0 ? (
           <Card>
             <EmptyState
               icon={<PenLine size={26} />}
-              title="No clinical sessions logged yet"
-              description="Log your first session to start tracking hours, supervisors and reflections."
+              title={readOnly ? "Nothing logged this term" : "No clinical sessions logged yet"}
+              description={readOnly ? "There are no clinical sessions recorded for this term." : "Log your first session to start tracking hours, supervisors and reflections."}
             />
           </Card>
         ) : (
-          sessions.map((s) => {
-            const badge = difficultyStyle(s.difficulty);
-            const meta = [
-              s.supervisor ? `Supervisor: ${s.supervisor}` : null,
-              s.hours != null ? `${fmtHours(s.hours)} hrs` : null,
-            ].filter(Boolean).join(" · ");
-            const hasNotes = !!(s.prep || s.reflections || s.takeaways);
-            return (
-              <button className="clinical-card" key={s.id} onClick={() => openDetail(s)}>
-                <div className="clinical-card-main">
-                  <div className="clinical-name">{s.department || "Clinical Session"}</div>
-                  {meta && <div className="clinical-meta">{meta}</div>}
-                  {s.goal && <div className="clinical-goal">Goal: {s.goal}</div>}
-                  {hasNotes && <div className="clinical-notes-hint"><FileText size={12} /> Notes &amp; reflections</div>}
-                </div>
-                <div className="clinical-aside">
-                  {s.session_date && <div className="clinical-date">{formatDate(s.session_date)}</div>}
-                  {s.difficulty && <span className="clinical-diff" style={{ background: badge.bg, color: badge.color }}>{s.difficulty}</span>}
-                </div>
-                <ChevronRight className="clinical-chevron" size={18} />
-              </button>
-            );
-          })
+          <>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", marginBottom: "1rem", flexWrap: "wrap" }}>
+              {groupByControl}
+              <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{sessions.length} total</span>
+            </div>
+
+            {granularity === "day" ? (
+              renderDayGroups(sessions)
+            ) : (
+              <>
+                {groupByPeriod(datedSessions, (s) => s.session_date as string, granularity).map((p) => (
+                  <PeriodRow
+                    key={p.key}
+                    label={periodLabel(p.key, granularity)}
+                    summary={groupSummary(p.items)}
+                    open={openPeriods.has(p.key)}
+                    onToggle={() => togglePeriod(p.key)}
+                  >
+                    {renderDayGroups(p.items)}
+                  </PeriodRow>
+                ))}
+                {undatedSessions.length > 0 && renderDayGroups(undatedSessions)}
+              </>
+            )}
+          </>
         )}
       </Section>
 
       {/* Mobile: the "New" action sits at the bottom-left of the list. */}
-      {!formOpen && (
+      {!formOpen && !readOnly && (
         <div className="k-mobile-only k-mobile-add">
           <Button onClick={openAdd}><Plus size={16} /> Log Session</Button>
         </div>
       )}
 
       {/* LOG / EDIT SESSION */}
-      {formOpen && (
+      {formOpen && !readOnly && (
         <div ref={formRef} style={{ scrollMarginTop: "1rem" }}>
           <Card title={editingId ? "Edit Clinical Session" : "Log Clinical Session"} icon={<PenLine size={20} />}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "0.75rem" }}>
@@ -393,7 +511,7 @@ export default function ClinicalsPage() {
 
       {/* SESSION DETAIL — centered dialog on desktop, snap-point bottom sheet on mobile */}
       <DetailSheet open={detailOpen} onOpenChange={setDetailOpen} title={detail?.department || "Clinical Session"}>
-        {detail && <DetailContent session={detail} onEdit={editFromDetail} onDelete={deleteFromDetail} onClose={() => setDetailOpen(false)} />}
+        {detail && <DetailContent session={detail} onEdit={editFromDetail} onDelete={deleteFromDetail} onClose={() => setDetailOpen(false)} readOnly={readOnly} />}
       </DetailSheet>
     </div>
   );

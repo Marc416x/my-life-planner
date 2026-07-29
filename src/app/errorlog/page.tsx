@@ -4,10 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { CircleX, Plus, Pencil, Trash2, Check, RotateCcw, AlertCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/toast-provider";
+import { useProfile } from "@/components/profile-provider";
 import { useCollapsibleForm } from "@/lib/use-collapsible-form";
 import { toISODate } from "@/lib/streak";
 import { groupByDay, periodLabel, periodRange, type Granularity } from "@/lib/group-by-date";
+import { applyTermScope } from "@/lib/term";
 import { DetailSheet, DetailRow } from "@/components/detail-sheet";
+import { ArchiveBanner } from "@/components/term-scope";
+import { ProUpsell } from "@/components/pro-gate";
 import { PageHeader, Card, StatCard, Field, Input, Select, Textarea, Button, Badge, EmptyState, DateGroupHeader, PeriodRow } from "@/components/kit";
 
 type Course = { id: string; name: string };
@@ -60,6 +64,7 @@ function reasonTone(r: string | null): "terracotta" | "olive" | "ochre" | "fores
 export default function ErrorLogPage() {
   const supabase = createClient();
   const toast = useToast();
+  const { isPro, viewTerm } = useProfile();
 
   const [userId, setUserId] = useState<string | null>(null);
   const [term, setTerm] = useState<string | null>(null);
@@ -100,14 +105,19 @@ export default function ErrorLogPage() {
 
   const listCols = "id, course_id, topic, prompt, correct, reason, source, resolved, notes, occurred_on";
 
-  async function fetchList(f: Filter, p: number, append: boolean) {
+  // `s` is the term scope (null = current). `t` lets callers pass a freshly
+  // fetched current term before `term` state has settled (initial load).
+  async function fetchList(f: Filter, p: number, append: boolean, s: string | null, t: string | null = term) {
     const from = p * PAGE;
-    let q = supabase
-      .from("error_log")
-      .select(listCols, { count: "exact" })
-      .order("occurred_on", { ascending: false })
-      .order("created_at", { ascending: false })
-      .range(from, from + PAGE - 1);
+    let q = applyTermScope(
+      supabase
+        .from("error_log")
+        .select(listCols, { count: "exact" })
+        .order("occurred_on", { ascending: false })
+        .order("created_at", { ascending: false })
+        .range(from, from + PAGE - 1),
+      s, t,
+    );
     if (f === "open") q = q.eq("resolved", false);
     if (f === "resolved") q = q.eq("resolved", true);
     const { data, count } = await q;
@@ -120,19 +130,21 @@ export default function ErrorLogPage() {
       const { data: { user } } = await supabase.auth.getUser();
       setUserId(user?.id ?? null);
       if (!user) { setLoading(false); return; }
-      const [{ data: profile }, { data: courseRows }, openRes, totalRes] = await Promise.all([
-        supabase.from("profiles").select("year").eq("id", user.id).single(),
+      // Profile first — its `year` is the current term the counts + list filter on.
+      const { data: profile } = await supabase.from("profiles").select("year").eq("id", user.id).single();
+      const yr = (profile?.year as string) ?? null;
+      setTerm(yr);
+      const [{ data: courseRows }, openRes, totalRes] = await Promise.all([
         supabase.from("courses").select("id, name").order("created_at", { ascending: true }),
-        supabase.from("error_log").select("id", { count: "exact", head: true }).eq("resolved", false),
-        supabase.from("error_log").select("id", { count: "exact", head: true }),
+        applyTermScope(supabase.from("error_log").select("id", { count: "exact", head: true }).eq("resolved", false), null, yr),
+        applyTermScope(supabase.from("error_log").select("id", { count: "exact", head: true }), null, yr),
       ]);
-      setTerm((profile?.year as string) ?? null);
       const cs = (courseRows as Course[]) ?? [];
       setCourses(cs);
       if (cs.length) setFCourse(cs[0].id);
       setOpenCount(openRes.count ?? 0);
       setTotalCount(totalRes.count ?? 0);
-      await fetchList("all", 0, false);
+      await fetchList("all", 0, false, viewTerm, yr);
       setLoading(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -146,13 +158,13 @@ export default function ErrorLogPage() {
     if (f === filter) return;
     setFilter(f);
     setPage(0);
-    fetchList(f, 0, false);
+    fetchList(f, 0, false, viewTerm);
   }
 
   async function loadMore() {
     const next = page + 1;
     setLoadingMore(true);
-    await fetchList(filter, next, true);
+    await fetchList(filter, next, true, viewTerm);
     setPage(next);
     setLoadingMore(false);
   }
@@ -259,7 +271,7 @@ export default function ErrorLogPage() {
   // ---- Group-by: Day / Week / Month ----
   async function loadPeriods(g: "week" | "month") {
     setPeriodsLoading(true);
-    const { data } = await supabase.rpc("error_log_periods", { p_gran: g });
+    const { data } = await supabase.rpc("error_log_periods", { p_gran: g, p_scope: viewTerm });
     setPeriods((data as Period[]) ?? []);
     setPeriodsLoading(false);
   }
@@ -282,15 +294,23 @@ export default function ErrorLogPage() {
     });
     if (!periodItems[key] && granularity !== "day") {
       const { start, end } = periodRange(key, granularity);
-      const { data } = await supabase
-        .from("error_log")
-        .select(listCols)
-        .gte("occurred_on", start).lte("occurred_on", end)
-        .order("occurred_on", { ascending: false })
-        .order("created_at", { ascending: false });
+      const { data } = await applyTermScope(
+        supabase
+          .from("error_log")
+          .select(listCols)
+          .gte("occurred_on", start).lte("occurred_on", end)
+          .order("occurred_on", { ascending: false })
+          .order("created_at", { ascending: false }),
+        viewTerm, term,
+      );
       setPeriodItems((prev) => ({ ...prev, [key]: (data as ErrorEntry[]) ?? [] }));
     }
   }
+
+  // Viewing an archived term (set globally in Settings) is read-only; non-Pro
+  // users see the upsell instead.
+  const readOnly = viewTerm !== null;
+  const locked = readOnly && !isPro;
 
   function renderErrorCard(e: ErrorEntry) {
     return (
@@ -309,16 +329,18 @@ export default function ErrorLogPage() {
               {e.source && <Badge tone="neutral">{e.source}</Badge>}
             </div>
           </div>
-          <button onClick={(ev) => { ev.stopPropagation(); requestDelete(e); }} aria-label="Delete error" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "inline-flex", padding: 2, flexShrink: 0 }}><Trash2 size={14} /></button>
+          {!readOnly && <button onClick={(ev) => { ev.stopPropagation(); requestDelete(e); }} aria-label="Delete error" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "inline-flex", padding: 2, flexShrink: 0 }}><Trash2 size={14} /></button>}
         </div>
 
         <div style={{ fontSize: "0.82rem", color: "var(--text-primary, var(--text))", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{e.prompt}</div>
 
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", gap: 4, marginTop: "auto", paddingTop: "0.7rem" }}>
-          <Button size="sm" variant={e.resolved ? "ghost" : "outline"} onClick={(ev) => { ev.stopPropagation(); toggleResolved(e); }}>
-            {e.resolved ? <><RotateCcw size={13} /> Reopen</> : <><Check size={13} /> Mark resolved</>}
-          </Button>
-        </div>
+        {!readOnly && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", gap: 4, marginTop: "auto", paddingTop: "0.7rem" }}>
+            <Button size="sm" variant={e.resolved ? "ghost" : "outline"} onClick={(ev) => { ev.stopPropagation(); toggleResolved(e); }}>
+              {e.resolved ? <><RotateCcw size={13} /> Reopen</> : <><Check size={13} /> Mark resolved</>}
+            </Button>
+          </div>
+        )}
       </div>
     );
   }
@@ -362,20 +384,24 @@ export default function ErrorLogPage() {
         icon={<CircleX size={22} />}
         title="Error Log"
         subtitle="Capture every mistake, review it, and turn it into a win."
-        actions={!formOpen ? (
+        actions={(!formOpen && !readOnly) ? (
           <Button className="k-desktop-only" onClick={openAdd}><Plus size={16} /> Log an error</Button>
         ) : undefined}
       />
 
-      <div className="k-stats-grid" style={{ marginBottom: "1.5rem" }}>
-        <StatCard tone="terracotta" label="Open Errors" value={openCount} sub="still to review" icon={<AlertCircle size={18} />} />
-        <StatCard tone="forest" label="Resolved" value={resolvedCount} sub="reviewed & mastered" icon={<Check size={18} />} />
-        <StatCard tone="ochre" label="Total Logged" value={totalCount} sub="mistakes captured" icon={<CircleX size={18} />} />
-        <StatCard tone="olive" label="Review Rate" value={`${reviewRate}%`} sub="of errors resolved" />
-      </div>
+      {readOnly && <ArchiveBanner term={viewTerm} />}
+
+      {!readOnly && (
+        <div className="k-stats-grid" style={{ marginBottom: "1.5rem" }}>
+          <StatCard tone="terracotta" label="Open Errors" value={openCount} sub="still to review" icon={<AlertCircle size={18} />} />
+          <StatCard tone="forest" label="Resolved" value={resolvedCount} sub="reviewed & mastered" icon={<Check size={18} />} />
+          <StatCard tone="ochre" label="Total Logged" value={totalCount} sub="mistakes captured" icon={<CircleX size={18} />} />
+          <StatCard tone="olive" label="Review Rate" value={`${reviewRate}%`} sub="of errors resolved" />
+        </div>
+      )}
 
       {/* Controls: group-by + (day-only) status filter */}
-      {!loading && totalCount > 0 && (
+      {!loading && !locked && (viewTerm !== null || totalCount > 0) && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", marginBottom: "1rem", flexWrap: "wrap" }}>
           {groupByControl}
           {granularity === "day" && (
@@ -391,9 +417,15 @@ export default function ErrorLogPage() {
         </div>
       )}
 
-      {loading ? (
+      {locked ? (
+        <ProUpsell
+          feature="The term archive"
+          blurb={`Revisit your ${viewTerm} error log as read-only history — every mistake you logged stays reviewable.`}
+          perks={["Browse every past term", "Read-only, never lost", "Week & month roll-ups per term"]}
+        />
+      ) : loading ? (
         <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", padding: "1rem", fontStyle: "italic", textAlign: "center" }}>Loading…</div>
-      ) : totalCount === 0 ? (
+      ) : (viewTerm === null && totalCount === 0) ? (
         <Card>
           <EmptyState
             icon={<CircleX size={26} />}
@@ -437,14 +469,14 @@ export default function ErrorLogPage() {
       )}
 
       {/* Mobile: the add action sits below the list. */}
-      {!formOpen && (
+      {!formOpen && !readOnly && (
         <div className="k-mobile-only k-mobile-add">
           <Button onClick={openAdd}><Plus size={16} /> Log an error</Button>
         </div>
       )}
 
       {/* ADD ERROR */}
-      {formOpen && (
+      {formOpen && !readOnly && (
         <div ref={formRef} style={{ scrollMarginTop: "1rem", marginTop: "1.5rem" }}>
           <Card title={editingId ? "Edit error" : "Log an error"} icon={editingId ? <Pencil size={20} /> : <CircleX size={20} />}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "0.75rem" }}>
@@ -494,16 +526,18 @@ export default function ErrorLogPage() {
             <DetailRow label="What went wrong">{detail.prompt}</DetailRow>
             {detail.correct && <DetailRow label="Correct answer">{detail.correct}</DetailRow>}
             {detail.notes && <DetailRow label="Notes">{detail.notes}</DetailRow>}
-            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginTop: "0.25rem" }}>
-              <Button
-                size="sm"
-                variant={detail.resolved ? "ghost" : "primary"}
-                onClick={() => { toggleResolved(detail); setDetail({ ...detail, resolved: !detail.resolved }); }}
-              >
-                {detail.resolved ? <><RotateCcw size={13} /> Reopen</> : <><Check size={13} /> Mark resolved</>}
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => openEditError(detail)}><Pencil size={13} /> Edit</Button>
-            </div>
+            {!readOnly && (
+              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginTop: "0.25rem" }}>
+                <Button
+                  size="sm"
+                  variant={detail.resolved ? "ghost" : "primary"}
+                  onClick={() => { toggleResolved(detail); setDetail({ ...detail, resolved: !detail.resolved }); }}
+                >
+                  {detail.resolved ? <><RotateCcw size={13} /> Reopen</> : <><Check size={13} /> Mark resolved</>}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => openEditError(detail)}><Pencil size={13} /> Edit</Button>
+              </div>
+            )}
           </div>
         )}
       </DetailSheet>

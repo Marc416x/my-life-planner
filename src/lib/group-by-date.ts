@@ -104,3 +104,32 @@ export function groupByDay<T>(items: T[], getISO: (t: T) => string): DayGroup<T>
   }
   return groups;
 }
+
+export type PeriodGroup<T> = { key: string; items: T[] };
+
+/**
+ * Bucket a list into week/month periods **in memory**, keyed by the period's
+ * local start date (Monday for weeks, the 1st for months — matching Postgres
+ * `date_trunc`, so `periodLabel`/`periodRange` accept the same keys). Groups are
+ * returned newest-first. Use this on pages that already hold their full history
+ * client-side (e.g. Clinicals); pages that paginate should call the roll-up RPCs
+ * instead so the summary totals stay accurate beyond the loaded window.
+ */
+export function groupByPeriod<T>(items: T[], getISO: (t: T) => string, gran: "week" | "month"): PeriodGroup<T>[] {
+  const groups: PeriodGroup<T>[] = [];
+  const index = new Map<string, PeriodGroup<T>>();
+  for (const it of items) {
+    const d = parseISO(getISO(it));
+    const start = gran === "week" ? mondayOf(d) : new Date(d.getFullYear(), d.getMonth(), 1);
+    const key = toISO(start);
+    let g = index.get(key);
+    if (!g) {
+      g = { key, items: [] };
+      index.set(key, g);
+      groups.push(g);
+    }
+    g.items.push(it);
+  }
+  groups.sort((a, b) => b.key.localeCompare(a.key)); // newest period first
+  return groups;
+}

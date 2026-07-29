@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { MODES, MODE_LABELS, applyMode, getStoredMode, type Mode } from "@/lib/theme";
-import { Sun, Moon, User, Bell, HelpCircle, ChevronRight, type LucideIcon } from "lucide-react";
+import { Sun, Moon, User, Bell, HelpCircle, ChevronRight, Archive, type LucideIcon } from "lucide-react";
 import { useProfile } from "@/components/profile-provider";
+import { TermScope } from "@/components/term-scope";
 import {
   permissionState,
   currentEndpoint,
@@ -40,7 +41,7 @@ const MODE_ICONS: Record<Mode, LucideIcon> = {
 
 export default function SettingsPage() {
   const supabase = createClient();
-  const { refresh } = useProfile();
+  const { refresh, isPro, currentTerm, archivedTerms, viewTerm, setViewTerm } = useProfile();
   const [userId, setUserId] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [fields, setFields] = useState<ProfileFields>(DEFAULT_PROFILE_FIELDS);
@@ -207,6 +208,29 @@ export default function SettingsPage() {
         </div>
         <button className="btn-add" onClick={saveProfile} style={{ marginTop: "1.2rem" }}>Save Profile</button>
         {savedMsg && <span style={{ marginLeft: "0.75rem", color: "var(--olive)", fontSize: "0.82rem" }}>{savedMsg}</span>}
+      </div>
+
+      <div className="form-section">
+        <h3 style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
+          <Archive size={18} /> Viewing term
+        </h3>
+        <div style={{ fontSize: "0.82rem", color: "var(--text-secondary)", marginBottom: "0.9rem", lineHeight: 1.5 }}>
+          Choose which academic term you&apos;re viewing across the app. Your current term stays fully
+          editable; past terms open as read-only history on your Study, Error Log and Clinicals pages.
+        </div>
+        {archivedTerms.length === 0 ? (
+          <div style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
+            You&apos;re on <strong>{currentTerm || "your current term"}</strong>. When you advance a
+            year, your previous term&apos;s data becomes browsable here.
+          </div>
+        ) : (
+          <TermScope currentTerm={currentTerm} archived={archivedTerms} scope={viewTerm} onScope={setViewTerm} isPro={isPro} />
+        )}
+        {viewTerm && (
+          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.7rem" }}>
+            Viewing <strong>{viewTerm}</strong> — a read-only archive. Pick your current term above to log new entries again.
+          </div>
+        )}
       </div>
 
       <div className="form-section">
