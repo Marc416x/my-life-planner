@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Pencil, Trash2, Plus, ChevronDown, ChevronRight, ClipboardList } from "lucide-react";
+import { Pencil, Trash2, Plus, ChevronDown, ClipboardList } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/toast-provider";
 import { useCollapsibleForm } from "@/lib/use-collapsible-form";
+import { DetailSheet, DetailRow } from "@/components/detail-sheet";
 import { PageHeader, Card, StatCard, Progress, Field, Input, Select, Textarea, Button, Badge, Tabs, EmptyState } from "@/components/kit";
 
 type Status = "pending" | "in_progress" | "completed";
@@ -69,7 +70,7 @@ export default function AssignmentsPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("all");
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [detail, setDetail] = useState<Assignment | null>(null);
 
   const { open: formOpen, formRef, openForm, closeForm: collapseForm, scrollFormIntoView } = useCollapsibleForm();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -179,15 +180,6 @@ export default function AssignmentsPage() {
     resetForm();
   }
 
-  function toggleExpand(id: string) {
-    setExpandedIds((s) => {
-      const n = new Set(s);
-      if (n.has(id)) n.delete(id);
-      else n.add(id);
-      return n;
-    });
-  }
-
   async function cycleStatus(a: Assignment) {
     const next = STATUS_ORDER[(STATUS_ORDER.indexOf(a.status) + 1) % 3];
     setItems((xs) => xs.map((x) => (x.id === a.id ? { ...x, status: next } : x)));
@@ -274,52 +266,43 @@ export default function AssignmentsPage() {
         ) : (
           visible.map((a, i) => {
             const overdue = isOverdue(a);
-            const hasDesc = !!(a.description && a.description.trim());
-            const expanded = expandedIds.has(a.id);
             return (
               <div key={a.id} style={{ borderBottom: i < visible.length - 1 ? "1px solid var(--border)" : "none" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", padding: "0.7rem 0", flexWrap: "wrap" }}>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3" style={{ padding: "0.7rem 0" }}>
                   <div
-                    onClick={hasDesc ? () => toggleExpand(a.id) : undefined}
-                    title={hasDesc ? (expanded ? "Hide description" : "Show description") : undefined}
-                    style={{ minWidth: 0, flex: 1, display: "flex", alignItems: "flex-start", gap: 6, cursor: hasDesc ? "pointer" : "default" }}
+                    onClick={() => setDetail(a)}
+                    role="button"
+                    aria-label={`${a.title} — view details`}
+                    title="View details"
+                    style={{ minWidth: 0, flex: 1, cursor: "pointer" }}
                   >
-                    {hasDesc && (
-                      <ChevronRight
-                        size={15}
-                        style={{ marginTop: 3, flexShrink: 0, color: "var(--text-muted)", transform: expanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}
-                      />
-                    )}
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: "0.88rem", fontWeight: 500, color: "var(--text-primary)", textDecoration: a.status === "completed" ? "line-through" : "none", opacity: a.status === "completed" ? 0.65 : 1 }}>
-                        {a.title}
-                      </div>
-                      <div style={{ fontSize: "0.72rem", color: overdue ? "var(--terracotta)" : "var(--text-muted)" }}>
-                        {a.course}
-                        {a.due_date ? ` · Planner Due: ${fmtMD(plannerDue(a.due_date))} (Actual: ${fmtMD(parseDate(a.due_date))})` : " · No due date"}
-                        {overdue ? " · Overdue" : ""}
-                      </div>
+                    <div style={{ fontSize: "0.88rem", fontWeight: 500, color: "var(--text-primary)", textDecoration: a.status === "completed" ? "line-through" : "none", opacity: a.status === "completed" ? 0.65 : 1 }}>
+                      {a.title}
+                    </div>
+                    <div style={{ fontSize: "0.72rem", color: overdue ? "var(--terracotta)" : "var(--text-muted)" }}>
+                      {a.course}
+                      {a.due_date ? ` · Planner Due: ${fmtMD(plannerDue(a.due_date))} (Actual: ${fmtMD(parseDate(a.due_date))})` : " · No due date"}
+                      {overdue ? " · Overdue" : ""}
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
-                    <Badge tone={PRIORITY[a.priority].tone}>{PRIORITY[a.priority].label}</Badge>
-                    <button
-                      onClick={() => cycleStatus(a)}
-                      title="Click to change status"
-                      style={{ fontSize: "0.7rem", padding: "2px 8px 2px 10px", borderRadius: 20, background: STATUS[a.status].bg, color: STATUS[a.status].color, fontWeight: 500, border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 2 }}
-                    >
-                      {STATUS[a.status].label}
-                      <ChevronDown size={12} style={{ opacity: 0.7 }} />
-                    </button>
-                    <button onClick={() => openEdit(a)} aria-label="Edit" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "inline-flex", padding: 2 }}><Pencil size={15} /></button>
-                    <button onClick={() => requestDelete(a)} aria-label="Delete" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "inline-flex", padding: 2 }}><Trash2 size={15} /></button>
+                  <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-normal">
+                    <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+                      <Badge tone={PRIORITY[a.priority].tone}>{PRIORITY[a.priority].label}</Badge>
+                      <button
+                        onClick={() => cycleStatus(a)}
+                        title="Click to change status"
+                        style={{ fontSize: "0.7rem", padding: "2px 8px 2px 10px", borderRadius: 20, background: STATUS[a.status].bg, color: STATUS[a.status].color, fontWeight: 500, border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 2 }}
+                      >
+                        {STATUS[a.status].label}
+                        <ChevronDown size={12} style={{ opacity: 0.7 }} />
+                      </button>
+                    </div>
+                    <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+                      <button onClick={() => openEdit(a)} aria-label="Edit" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "inline-flex", padding: 2 }}><Pencil size={15} /></button>
+                      <button onClick={() => requestDelete(a)} aria-label="Delete" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "inline-flex", padding: 2 }}><Trash2 size={15} /></button>
+                    </div>
                   </div>
                 </div>
-                {hasDesc && expanded && (
-                  <div style={{ padding: "0 0 0.7rem 21px", fontSize: "0.8rem", color: "var(--text-secondary)", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
-                    {a.description}
-                  </div>
-                )}
               </div>
             );
           })
@@ -376,6 +359,34 @@ export default function AssignmentsPage() {
           </Card>
         </div>
       )}
+
+      <DetailSheet
+        open={!!detail}
+        onOpenChange={(o) => { if (!o) setDetail(null); }}
+        title={detail?.title ?? ""}
+      >
+        {detail && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+              <span style={{ fontSize: "0.72rem", padding: "2px 10px", borderRadius: 20, background: STATUS[detail.status].bg, color: STATUS[detail.status].color, fontWeight: 500 }}>{STATUS[detail.status].label}</span>
+              <Badge tone={PRIORITY[detail.priority].tone}>{PRIORITY[detail.priority].label}</Badge>
+              {isOverdue(detail) && <Badge tone="terracotta">Overdue</Badge>}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem" }}>
+              {detail.course && <DetailRow label="Course">{detail.course}</DetailRow>}
+              {detail.type && <DetailRow label="Type">{detail.type}</DetailRow>}
+              {detail.due_date && <DetailRow label="Actual due">{fmtMD(parseDate(detail.due_date))}{detail.due_time ? ` · ${detail.due_time}` : ""}</DetailRow>}
+              {detail.due_date && <DetailRow label="Planner due">{fmtMD(plannerDue(detail.due_date))}</DetailRow>}
+            </div>
+            {detail.description
+              ? <DetailRow label="Description">{detail.description}</DetailRow>
+              : <div style={{ fontSize: "0.82rem", color: "var(--text-muted)", fontStyle: "italic" }}>No description.</div>}
+            <div style={{ marginTop: "0.25rem" }}>
+              <Button size="sm" variant="outline" onClick={() => { const a = detail; setDetail(null); openEdit(a); }}><Pencil size={13} /> Edit</Button>
+            </div>
+          </div>
+        )}
+      </DetailSheet>
     </div>
   );
 }

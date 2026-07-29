@@ -10,3 +10,4 @@ export { Alert, type AlertProps } from "./alert";
 export { EmptyState, type EmptyStateProps } from "./empty-state";
 export { Tabs, type TabItem, type TabsProps } from "./tabs";
 export { Section, type SectionProps } from "./section";
+export { DateGroupHeader, type DateGroupHeaderProps, PeriodRow, type PeriodRowProps } from "./date-group";

@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, Clock, Trash2, ChevronDown, Plus, ClipboardList } from "lucide-react";
+import { CheckCircle2, Clock, Trash2, Plus, Pencil, ClipboardList } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/toast-provider";
 import { useCollapsibleForm } from "@/lib/use-collapsible-form";
+import { DetailSheet, DetailRow } from "@/components/detail-sheet";
 import { PageHeader, Card, StatCard, Field, Input, Select, Textarea, Button, EmptyState } from "@/components/kit";
 
 type Course = { id: string; name: string };
@@ -49,7 +50,7 @@ export default function QuizzesPage() {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [detail, setDetail] = useState<Quiz | null>(null);
 
   // Add-quiz form (open/close + auto-scroll via the shared hook).
   const { open: formOpen, formRef, openForm, closeForm: collapseForm, scrollFormIntoView } = useCollapsibleForm();
@@ -63,6 +64,7 @@ export default function QuizzesPage() {
   const [fDifficulty, setFDifficulty] = useState(DIFFICULTIES[1]);
   const [fNotes, setFNotes] = useState("");
   const [formError, setFormError] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const pending = useRef<Map<string, { item: Quiz; timeout: number }>>(new Map());
 
@@ -94,12 +96,40 @@ export default function QuizzesPage() {
   const timed = quizzes.filter((q) => q.time_min != null);
   const avgTime = timed.length ? Math.round(timed.reduce((s, q) => s + (q.time_min as number), 0) / timed.length) : null;
 
-  function openAdd() {
+  function resetForm() {
+    setEditingId(null);
     setFormError("");
+    setFName("");
+    setFDate("");
+    setFScore("");
+    setFTime("");
+    setFTopics("");
+    setFNotes("");
+  }
+
+  function openAdd() {
+    resetForm();
     openForm();
   }
 
-  async function addQuiz() {
+  function openEditQuiz(q: Quiz) {
+    setEditingId(q.id);
+    setFormError("");
+    setFCourse(q.course_id);
+    setFName(q.name);
+    setFDate(q.taken_on ?? "");
+    setFScore(q.score != null ? String(q.score) : "");
+    setFMax(q.max_score != null ? String(q.max_score) : "100");
+    setFTime(q.time_min != null ? String(q.time_min) : "");
+    setFTopics(q.topics ?? "");
+    setFDifficulty(q.difficulty ?? DIFFICULTIES[1]);
+    setFNotes(q.notes ?? "");
+    setDetail(null);
+    if (!formOpen) openForm();
+    else scrollFormIntoView();
+  }
+
+  async function saveQuiz() {
     if (!userId) return;
     if (!fCourse) { setFormError("Add a course first."); return; }
     if (!fName.trim()) { setFormError("Name the quiz."); return; }
@@ -108,8 +138,7 @@ export default function QuizzesPage() {
     if (score == null || max == null || !(max > 0)) { setFormError("Enter a score and a max score above 0."); return; }
     setFormError("");
 
-    const payload = {
-      user_id: userId,
+    const fields = {
       course_id: fCourse,
       name: fName.trim(),
       topics: fTopics.trim() || null,
@@ -120,9 +149,19 @@ export default function QuizzesPage() {
       taken_on: fDate || null,
       notes: fNotes.trim() || null,
     };
-    const { data, error } = await supabase.from("quizzes").insert(payload).select("id, course_id, name, topics, difficulty, score, max_score, time_min, taken_on, notes").single();
-    if (error || !data) { setFormError("Could not save — please try again."); return; }
+    const cols = "id, course_id, name, topics, difficulty, score, max_score, time_min, taken_on, notes";
 
+    if (editingId) {
+      const { data, error } = await supabase.from("quizzes").update(fields).eq("id", editingId).select(cols).single();
+      if (error || !data) { setFormError("Could not save — please try again."); return; }
+      setQuizzes((xs) => xs.map((x) => (x.id === editingId ? (data as Quiz) : x)));
+      collapseForm();
+      resetForm();
+      return;
+    }
+
+    const { data, error } = await supabase.from("quizzes").insert({ user_id: userId, ...fields }).select(cols).single();
+    if (error || !data) { setFormError("Could not save — please try again."); return; }
     setQuizzes((xs) => [data as Quiz, ...xs]);
     // Reset the per-attempt fields, keep course/difficulty for quick repeat entry.
     setFName("");
@@ -189,27 +228,24 @@ export default function QuizzesPage() {
           {quizzes.map((q) => {
             const pct = q.score != null && q.max_score ? Math.round((q.score / q.max_score) * 1000) / 10 : null;
             const badge = difficultyBadge(q.difficulty);
-            const expanded = expandedId === q.id;
-            const hasDetail = !!(q.notes || q.topics);
             return (
               <div
                 key={q.id}
-                onClick={() => hasDetail && setExpandedId(expanded ? null : q.id)}
-                role={hasDetail ? "button" : undefined}
-                aria-expanded={hasDetail ? expanded : undefined}
-                style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "var(--s-radius-sm)", padding: "1.25rem", cursor: hasDetail ? "pointer" : "default" }}
+                onClick={() => setDetail(q)}
+                role="button"
+                aria-label={`${q.name} quiz — view details`}
+                style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "var(--s-radius-sm)", padding: "1.25rem", cursor: "pointer" }}
               >
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "0.75rem" }}>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: "0.9rem" }}>{courseName(q.course_id)} — {q.name}</div>
-                    {q.topics && <div style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>{q.topics}</div>}
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "0.5rem", marginBottom: "0.75rem" }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: "0.9rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{courseName(q.course_id)} — {q.name}</div>
                     <div style={{ display: "flex", gap: "0.4rem", marginTop: 4, flexWrap: "wrap" }}>
                       {q.difficulty && <span style={{ fontSize: "0.65rem", padding: "2px 6px", borderRadius: 10, background: badge.bg, color: badge.color }}>{q.difficulty}</span>}
                       {q.time_min != null && <span style={{ fontSize: "0.65rem", padding: "2px 6px", borderRadius: 10, background: "var(--forest-light)", color: "var(--forest)" }}>{q.time_min} min</span>}
                       {q.taken_on && <span style={{ fontSize: "0.65rem", padding: "2px 6px", borderRadius: 10, background: "var(--bg-elevated, var(--ochre-light))", color: "var(--text-muted)" }}>{q.taken_on}</span>}
                     </div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexShrink: 0 }}>
                     <div style={{ fontFamily: "var(--font-caveat), cursive", fontSize: "1.5rem", fontWeight: 700, color: pct != null ? scoreColor(pct) : "var(--text-muted)" }}>{pct != null ? `${pct}%` : "—"}</div>
                     <button onClick={(e) => { e.stopPropagation(); requestDelete(q); }} aria-label="Delete quiz" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "inline-flex", padding: 2 }}><Trash2 size={14} /></button>
                   </div>
@@ -218,28 +254,6 @@ export default function QuizzesPage() {
                   <div style={{ display: "flex", alignItems: "center", gap: 4 }}><CheckCircle2 size={13} /> Score: {q.score}/{q.max_score}</div>
                   {q.time_min != null && <div style={{ display: "flex", alignItems: "center", gap: 4 }}><Clock size={13} /> Time: {q.time_min} min</div>}
                 </div>
-                {hasDetail && (
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 4, marginTop: "0.6rem", fontSize: "0.68rem", color: "var(--text-muted)" }}>
-                    {expanded ? "Hide details" : "View details"}
-                    <ChevronDown size={13} style={{ transition: "transform 0.15s", transform: expanded ? "rotate(180deg)" : "none" }} />
-                  </div>
-                )}
-                {expanded && (
-                  <div style={{ marginTop: "0.6rem", paddingTop: "0.75rem", borderTop: "1px dashed var(--border)", fontSize: "0.78rem", color: "var(--text-secondary, var(--text-muted))", display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-                    {q.topics && (
-                      <div>
-                        <div style={{ fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--text-muted)", marginBottom: 2 }}>Topics Covered</div>
-                        {q.topics}
-                      </div>
-                    )}
-                    {q.notes && (
-                      <div>
-                        <div style={{ fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--text-muted)", marginBottom: 2 }}>Notes</div>
-                        <div style={{ whiteSpace: "pre-wrap" }}>{q.notes}</div>
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             );
           })}
@@ -256,7 +270,7 @@ export default function QuizzesPage() {
       {/* ADD QUIZ RESULT */}
       {formOpen && (
         <div ref={formRef} style={{ scrollMarginTop: "1rem", marginTop: "1.5rem" }}>
-          <Card title="Add Quiz Result" icon={<ClipboardList size={20} />}>
+          <Card title={editingId ? "Edit Quiz Result" : "Add Quiz Result"} icon={editingId ? <Pencil size={20} /> : <ClipboardList size={20} />}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "0.75rem" }}>
               <Field label="Course" htmlFor="q-course">
                 <Select id="q-course" value={fCourse} onChange={(e) => { setFCourse(e.target.value); if (formError) setFormError(""); }}>
@@ -279,13 +293,38 @@ export default function QuizzesPage() {
               <Field label="Notes" htmlFor="q-notes"><Textarea id="q-notes" value={fNotes} onChange={(e) => setFNotes(e.target.value)} placeholder="What was challenging? What went well?" /></Field>
             </div>
             <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap", marginTop: "1.1rem" }}>
-              <Button onClick={(e) => { e.currentTarget.blur(); addQuiz(); }}>Add Quiz</Button>
-              <Button variant="outline" onClick={collapseForm}>Done</Button>
+              <Button onClick={(e) => { e.currentTarget.blur(); saveQuiz(); }}>{editingId ? "Save changes" : "Add Quiz"}</Button>
+              <Button variant="outline" onClick={() => { collapseForm(); resetForm(); }}>{editingId ? "Cancel" : "Done"}</Button>
               {formError && <span style={{ color: "var(--terracotta-dark)", fontSize: "0.82rem" }}>{formError}</span>}
             </div>
           </Card>
         </div>
       )}
+
+      <DetailSheet
+        open={!!detail}
+        onOpenChange={(o) => { if (!o) setDetail(null); }}
+        title={detail ? `${courseName(detail.course_id)} — ${detail.name}` : ""}
+      >
+        {detail && (() => {
+          const pct = detail.score != null && detail.max_score ? Math.round((detail.score / detail.max_score) * 1000) / 10 : null;
+          return (
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem" }}>
+                <DetailRow label="Score">{detail.score != null && detail.max_score != null ? `${detail.score}/${detail.max_score}${pct != null ? ` (${pct}%)` : ""}` : "—"}</DetailRow>
+                {detail.difficulty && <DetailRow label="Difficulty">{detail.difficulty}</DetailRow>}
+                {detail.time_min != null && <DetailRow label="Time">{detail.time_min} min</DetailRow>}
+                {detail.taken_on && <DetailRow label="Date taken">{detail.taken_on}</DetailRow>}
+              </div>
+              {detail.topics && <DetailRow label="Topics covered">{detail.topics}</DetailRow>}
+              {detail.notes && <DetailRow label="Notes">{detail.notes}</DetailRow>}
+              <div style={{ marginTop: "0.25rem" }}>
+                <Button size="sm" variant="outline" onClick={() => openEditQuiz(detail)}><Pencil size={13} /> Edit</Button>
+              </div>
+            </div>
+          );
+        })()}
+      </DetailSheet>
     </div>
   );
 }

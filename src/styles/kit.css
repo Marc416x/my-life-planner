@@ -627,8 +627,28 @@ body.mode-dark .k-page-hero {
 @media (min-width: 768px) {
   .k-mobile-only { display: none !important; }
 }
-/* Left-aligned wrapper for the mobile "New …" button below a list. */
+/* Mobile: the "New …" action floats as a bottom-right FAB (extended pill) that
+ * sits just above the fixed bottom tab bar, so it's reachable without scrolling
+ * to the end of a long list. One rule, applied on every list page that renders
+ * a `.k-mobile-add` wrapper. On desktop the wrapper stays hidden (k-mobile-only). */
 .k-mobile-add { margin-top: 1rem; }
+@media (max-width: 767px) {
+  .k-mobile-add {
+    position: fixed;
+    right: 1rem;
+    bottom: calc(64px + env(safe-area-inset-bottom) + 1rem);
+    z-index: 96; /* under the bottom nav (97), above page content */
+    margin-top: 0;
+  }
+  .k-mobile-add .k-btn {
+    border-radius: 999px;
+    box-shadow: 0 8px 22px rgba(40, 30, 20, 0.22);
+  }
+  /* Reserve scroll room so the floating button never covers the last list item. */
+  .main-content:has(.k-mobile-add) {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom) + 5rem);
+  }
+}
 
 /* ================================================================== *
  * SIDEBAR POLISH  (refines the app chrome in base.css to the kit look:

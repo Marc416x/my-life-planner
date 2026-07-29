@@ -68,3 +68,14 @@ export function DetailSheet({
     </Dialog.Root>
   );
 }
+
+// A labelled field for the body of a DetailSheet — uppercase caption above the
+// value. Keeps every "compact card → detail" surface consistent across the app.
+export function DetailRow({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div>
+      <div style={{ fontSize: "0.62rem", textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--text-muted)", marginBottom: 3 }}>{label}</div>
+      <div style={{ fontSize: "0.85rem", color: "var(--text-primary, var(--text))", whiteSpace: "pre-wrap" }}>{children}</div>
+    </div>
+  );
+}

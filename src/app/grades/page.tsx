@@ -1,11 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { BookOpen, Target, Trash2, Plus } from "lucide-react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { BookOpen, Target, Trash2, Pencil, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/toast-provider";
 import { useCollapsibleForm } from "@/lib/use-collapsible-form";
 import { PageHeader, Card, Field, Input, Select, Button, Badge } from "@/components/kit";
+
+// Shared row layout for the grade lists: a truncating info block on the left,
+// value (+ actions) pinned right. Replaces the legacy 3-column `.grade-row`,
+// which wrapped badly on mobile.
+const gradeRow: CSSProperties = { display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.7rem 0", borderBottom: "1px solid var(--border)" };
+const iconBtn: CSSProperties = { background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "inline-flex", padding: 2 };
+const rowInfo: CSSProperties = { minWidth: 0, flex: 1 };
+const rowTitle: CSSProperties = { fontSize: "0.85rem", color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
+const rowMeta: CSSProperties = { fontSize: "0.72rem", color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
 
 // Grade-point + GPA logic, ported verbatim from the prototype (grades.js).
 function pctToGradePoint(pct: number) {
@@ -110,6 +119,7 @@ export default function GradesPage() {
   const [fMax, setFMax] = useState("");
   const [fWeight, setFWeight] = useState("");
   const [formError, setFormError] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const pending = useRef<Map<string, { item: Assessment; timeout: number }>>(new Map());
 
@@ -201,12 +211,34 @@ export default function GradesPage() {
     return rows;
   })();
 
-  function openAdd() {
+  function resetForm() {
+    setEditingId(null);
     setFormError("");
+    setFName("");
+    setFScore("");
+    setFMax("");
+    setFWeight("");
+  }
+
+  function openAdd() {
+    resetForm();
     openForm();
   }
 
-  async function addGrade() {
+  function openEditGrade(a: Assessment) {
+    setEditingId(a.id);
+    setFormError("");
+    setFCourse(a.course_id);
+    setFName(a.name);
+    setFType(a.type ?? ASSESSMENT_TYPES[0]);
+    setFScore(a.score != null ? String(a.score) : "");
+    setFMax(a.max_score != null ? String(a.max_score) : "");
+    setFWeight(a.weight_pct != null ? String(a.weight_pct) : "");
+    if (!formOpen) openForm();
+    else scrollFormIntoView();
+  }
+
+  async function saveGrade() {
     if (!userId) return;
     if (!fCourse) { setFormError("Add a course first."); return; }
     if (!fName.trim()) { setFormError("Name the assessment."); return; }
@@ -215,8 +247,7 @@ export default function GradesPage() {
     if (score == null || max == null || !(max > 0)) { setFormError("Enter a score and a max score above 0."); return; }
     setFormError("");
 
-    const payload = {
-      user_id: userId,
+    const fields = {
       course_id: fCourse,
       name: fName.trim(),
       type: fType,
@@ -224,9 +255,23 @@ export default function GradesPage() {
       max_score: max,
       weight_pct: fWeight === "" ? null : Number(fWeight),
     };
-    const { data, error } = await supabase.from("assessments").insert(payload).select().single();
-    if (error || !data) { setFormError("Could not save — please try again."); return; }
 
+    if (editingId) {
+      const original = assessments.find((x) => x.id === editingId);
+      const { data, error } = await supabase.from("assessments").update(fields).eq("id", editingId).select().single();
+      if (error || !data) { setFormError("Could not save — please try again."); return; }
+      const next = assessments.map((x) => (x.id === editingId ? (data as Assessment) : x));
+      setAssessments(next);
+      syncCourseGrade(fCourse, next);
+      // If the entry moved to a different course, refresh the old course too.
+      if (original && original.course_id !== fCourse) syncCourseGrade(original.course_id, next);
+      collapseForm();
+      resetForm();
+      return;
+    }
+
+    const { data, error } = await supabase.from("assessments").insert({ user_id: userId, ...fields }).select().single();
+    if (error || !data) { setFormError("Could not save — please try again."); return; }
     const next = [...assessments, data as Assessment];
     setAssessments(next);
     syncCourseGrade(fCourse, next);
@@ -275,7 +320,7 @@ export default function GradesPage() {
         ) : undefined}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-4">
         <Card style={{ textAlign: "center" }}>
           <div className="gpa-val">{gpa}</div>
           <div className="gpa-label">Current GPA</div>
@@ -297,13 +342,18 @@ export default function GradesPage() {
           ) : (
             courses.map((c) => {
               const n = assessments.filter((a) => a.course_id === c.id).length;
+              const meta = [
+                c.code || null,
+                c.credits != null ? `${c.credits} credit${c.credits === 1 ? "" : "s"}` : null,
+                c.weight_pct != null ? `${c.weight_pct}% weight` : null,
+                n > 0 ? `${n} grade${n === 1 ? "" : "s"}` : null,
+              ].filter(Boolean).join(" · ");
               return (
-                <div className="grade-row" key={c.id}>
-                  <div className="grade-name">
-                    <strong>{c.name}</strong>{c.code ? ` ${c.code}` : ""}{c.credits != null ? ` · ${c.credits} credit${c.credits === 1 ? "" : "s"}` : ""}
-                    {n > 0 && <span style={{ color: "var(--text-muted)", fontSize: "0.72rem" }}> · {n} grade{n === 1 ? "" : "s"}</span>}
+                <div style={gradeRow} key={c.id}>
+                  <div style={rowInfo}>
+                    <div style={rowTitle}><strong>{c.name}</strong></div>
+                    {meta && <div style={rowMeta}>{meta}</div>}
                   </div>
-                  <div className="grade-weight">{c.weight_pct != null ? `${c.weight_pct}%` : "—"}</div>
                   <div className={"grade-score " + (c.grade_pct != null ? gradeClass(c.grade_pct) : "")} style={c.grade_pct != null ? undefined : { color: "var(--text-muted)" }}>{c.grade_pct != null ? `${c.grade_pct}%` : "—"}</div>
                 </div>
               );
@@ -313,22 +363,25 @@ export default function GradesPage() {
       </div>
 
       {/* Recorded (official) grades */}
-      <Card title="Recorded Grades" icon={<BookOpen size={20} />}>
+      <Card title="Recorded Grades" icon={<BookOpen size={20} />} style={{ marginTop: "2rem" }}>
         {assessments.length > 0 ? (
           assessments.map((a) => {
             const pct = a.score != null && a.max_score ? Math.round((a.score / a.max_score) * 1000) / 10 : null;
+            const meta = [
+              a.score != null && a.max_score != null ? `${a.score}/${a.max_score}` : null,
+              a.type || null,
+              a.weight_pct != null ? `${a.weight_pct}% weight` : null,
+            ].filter(Boolean).join(" · ");
             return (
-              <div className="grade-row" key={a.id}>
-                <div className="grade-name">
-                  <strong>{courseName(a.course_id)}</strong> · {a.name}
-                  {a.type ? <span style={{ color: "var(--text-muted)", fontSize: "0.72rem" }}> · {a.type}</span> : null}
+              <div style={gradeRow} key={a.id}>
+                <div style={rowInfo}>
+                  <div style={rowTitle}><strong>{courseName(a.course_id)}</strong> · {a.name}</div>
+                  {meta && <div style={rowMeta}>{meta}</div>}
                 </div>
-                <div className="grade-weight" style={{ width: "auto", fontSize: "0.72rem" }}>
-                  {a.score}/{a.max_score}{a.weight_pct != null ? ` · ${a.weight_pct}% wt` : ""}
-                </div>
-                <div className={"grade-score " + (pct != null ? gradeClass(pct) : "")} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  {pct != null ? `${pct}%` : "—"}
-                  <button onClick={() => requestDelete(a)} aria-label="Delete grade" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "inline-flex", padding: 2 }}><Trash2 size={14} /></button>
+                <div className={"grade-score " + (pct != null ? gradeClass(pct) : "")} style={pct != null ? undefined : { color: "var(--text-muted)" }}>{pct != null ? `${pct}%` : "—"}</div>
+                <div style={{ display: "flex", gap: "0.3rem", flexShrink: 0 }}>
+                  <button onClick={() => openEditGrade(a)} aria-label="Edit grade" style={iconBtn}><Pencil size={14} /></button>
+                  <button onClick={() => requestDelete(a)} aria-label="Delete grade" style={iconBtn}><Trash2 size={14} /></button>
                 </div>
               </div>
             );
@@ -350,7 +403,7 @@ export default function GradesPage() {
       {/* ADD COURSE GRADE ENTRY */}
       {formOpen && (
         <div ref={formRef} style={{ scrollMarginTop: "1rem", marginTop: "1rem" }}>
-          <Card title="Add Course Grade Entry" icon={<BookOpen size={20} />}>
+          <Card title={editingId ? "Edit Grade Entry" : "Add Course Grade Entry"} icon={editingId ? <Pencil size={20} /> : <BookOpen size={20} />}>
             <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginBottom: "0.85rem", fontStyle: "italic" }}>Official grades from your syllabus — these feed each course grade and your GPA.</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "0.75rem" }}>
               <Field label="Course" htmlFor="g-course">
@@ -367,8 +420,8 @@ export default function GradesPage() {
               <Field label="Weight %" htmlFor="g-weight"><Input id="g-weight" type="number" min="0" max="100" value={fWeight} onChange={(e) => setFWeight(e.target.value)} placeholder="10" /></Field>
             </div>
             <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap", marginTop: "1.1rem" }}>
-              <Button onClick={(e) => { e.currentTarget.blur(); addGrade(); }}>Add Grade</Button>
-              <Button variant="outline" onClick={collapseForm}>Done</Button>
+              <Button onClick={(e) => { e.currentTarget.blur(); saveGrade(); }}>{editingId ? "Save changes" : "Add Grade"}</Button>
+              <Button variant="outline" onClick={() => { collapseForm(); resetForm(); }}>{editingId ? "Cancel" : "Done"}</Button>
               {formError && <span style={{ color: "var(--terracotta-dark)", fontSize: "0.82rem" }}>{formError}</span>}
             </div>
           </Card>
@@ -376,7 +429,7 @@ export default function GradesPage() {
       )}
 
       <Card
-        style={{ marginTop: "1.5rem" }}
+        style={{ marginTop: "2rem" }}
         title="Practice Grades — Mastery Score"
         icon={<Target size={20} />}
         action={<Badge tone="ochre">Separate from GPA</Badge>}
@@ -400,12 +453,14 @@ export default function GradesPage() {
                 : `${m.attempts} quizzes · updated ${recencyLabel(m.lastDays)}`;
             const cls = m.status === "active" ? gradeClass(m.score) : "";
             return (
-              <div className="grade-row" key={m.key}>
-                <div className="grade-name" style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: dot, display: "inline-block", flexShrink: 0 }} />
-                  <span><strong>{m.course}</strong> · {m.topic}</span>
+              <div style={gradeRow} key={m.key}>
+                <div style={rowInfo}>
+                  <div style={{ ...rowTitle, display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: dot, display: "inline-block", flexShrink: 0 }} />
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}><strong>{m.course}</strong> · {m.topic}</span>
+                  </div>
+                  <div style={{ ...rowMeta, fontSize: "0.68rem", marginLeft: 14 }}>{meta}</div>
                 </div>
-                <div className="grade-weight" style={{ width: "auto", fontSize: "0.68rem" }}>{meta}</div>
                 <div className={"grade-score " + cls} style={cls ? undefined : { color: "var(--text-muted)" }}>{m.score}%</div>
               </div>
             );
