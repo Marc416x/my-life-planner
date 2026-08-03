@@ -627,6 +627,15 @@ body.mode-dark .k-page-hero {
 @media (min-width: 768px) {
   .k-mobile-only { display: none !important; }
 }
+/* NCLEX readiness hero: gauge beside the interpretation on wide screens, stacked
+ * (gauge centred above) once the row gets tight. */
+@media (max-width: 560px) {
+  .k-nclex-hero {
+    grid-template-columns: 1fr !important;
+    justify-items: center;
+    text-align: center;
+  }
+}
 /* Mobile: the "New …" action floats as a bottom-right FAB (extended pill) that
  * sits just above the fixed bottom tab bar, so it's reachable without scrolling
  * to the end of a long list. One rule, applied on every list page that renders
