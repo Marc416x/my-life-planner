@@ -177,14 +177,25 @@ export default function TrackersPage() {
       let ts = (trackerRows as Tracker[]) ?? [];
 
       // First visit (current-term view): seed the presets so the page isn't empty.
+      //
+      // Seeded via upsert, NOT insert: React Strict Mode double-invokes this
+      // effect in dev, and a plain insert let both runs pass the `length === 0`
+      // check before either landed — seeding every preset twice (migration 0021
+      // cleans that up and adds the unique index this relies on). `onConflict`
+      // makes a second run a no-op, so we re-read rather than trusting what this
+      // particular call happened to insert.
       if (ts.length === 0 && viewTerm === null) {
         const seed = PRESETS.map((p, i) => ({
           user_id: user.id, name: p.name, kind: p.kind, unit: p.unit || null,
           target: p.target, tone: p.tone, icon: p.icon, sort_order: i,
         }));
+        await supabase
+          .from("trackers")
+          .upsert(seed, { onConflict: "user_id,name", ignoreDuplicates: true });
         const { data: seeded } = await supabase
-          .from("trackers").insert(seed)
-          .select("id, name, kind, unit, target, tone, icon, sort_order, active");
+          .from("trackers")
+          .select("id, name, kind, unit, target, tone, icon, sort_order, active")
+          .order("sort_order", { ascending: true });
         ts = (seeded as Tracker[]) ?? [];
       }
       setTrackers(ts);
