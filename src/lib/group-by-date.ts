@@ -11,7 +11,7 @@ const WEEKDAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 /** Parse a `YYYY-MM-DD` string as a local-midnight Date. */
-function parseISO(s: string): Date {
+export function parseISO(s: string): Date {
   const [y, m, d] = s.split("-").map(Number);
   return new Date(y, m - 1, d);
 }
@@ -35,7 +35,7 @@ const MONTHS_LONG = [
 ];
 
 /** Local `YYYY-MM-DD` for a Date. */
-function toISO(d: Date): string {
+export function toISO(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
